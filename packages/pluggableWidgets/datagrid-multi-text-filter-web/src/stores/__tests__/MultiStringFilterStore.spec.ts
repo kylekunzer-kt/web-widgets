@@ -235,6 +235,19 @@ describe("MultiStringFilterStore", () => {
             expect(store.terms).toEqual(["a"]);
         });
 
+        it("ignores a settings array containing non-string entries", () => {
+            const store = makeStore();
+            store.setTerms("a");
+            store.fromJSON(["x", 42, "y"] as any);
+            expect(store.terms).toEqual(["a"]);
+        });
+
+        it("keeps a single-term list whose term collides with an operator name", () => {
+            const store = makeStore();
+            store.fromJSON(["contains"]);
+            expect(store.terms).toEqual(["contains"]);
+        });
+
         it("applies the cap to restored settings", () => {
             const store = makeStore({ maxTerms: 2 });
             store.fromJSON(["a", "b", "c"]);

@@ -1,4 +1,4 @@
-import { FilterData } from "@mendix/filter-commons/typings/settings";
+import { FilterData, InputData, SelectData } from "@mendix/filter-commons/typings/settings";
 import { isInputData } from "@mendix/widget-plugin-dropdown-filter/stores/BaseSelectStore";
 import { Filter } from "@mendix/widget-plugin-filtering/typings/ObservableFilterHost";
 import { AttributeMetaData } from "mendix";
@@ -16,6 +16,17 @@ const BUILDERS: Record<MatchModeEnum, ConditionBuilder> = {
     equal: equals,
     startsWith
 };
+
+/**
+ * `isInputData` decides on `data[0]` alone, so a one-term list like `["contains"]` would be
+ * misread as another widget's input-filter settings and silently dropped. `InputData` is
+ * always a 3-tuple, so only treat the sniff as a match when the length actually agrees —
+ * expressed as a single predicate (rather than inlining `data.length === 3 && isInputData(data)`
+ * at the call site) so TypeScript can narrow `data` to `SelectData` after a negated check.
+ */
+function looksLikeInputData(data: InputData | SelectData): data is InputData {
+    return data.length === 3 && isInputData(data);
+}
 
 export interface MultiStringFilterStoreSpec {
     attributes: Array<AttributeMetaData<string>>;
@@ -198,7 +209,7 @@ export class MultiStringFilterStore implements Filter {
     }
 
     fromJSON(data: FilterData): void {
-        if (data == null || !Array.isArray(data) || isInputData(data)) {
+        if (data == null || !Array.isArray(data) || looksLikeInputData(data)) {
             return;
         }
 
