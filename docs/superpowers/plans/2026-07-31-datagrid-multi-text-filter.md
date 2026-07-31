@@ -1037,6 +1037,19 @@ describe("MultiStringFilterStore", () => {
             expect(store.terms).toEqual(["a"]);
         });
 
+        it("ignores a settings array containing non-string entries", () => {
+            const store = makeStore();
+            store.setTerms("a");
+            store.fromJSON(["x", 42, "y"] as any);
+            expect(store.terms).toEqual(["a"]);
+        });
+
+        it("keeps a single-term list whose term collides with an operator name", () => {
+            const store = makeStore();
+            store.fromJSON(["contains"]);
+            expect(store.terms).toEqual(["contains"]);
+        });
+
         it("applies the cap to restored settings", () => {
             const store = makeStore({ maxTerms: 2 });
             store.fromJSON(["a", "b", "c"]);
@@ -1126,7 +1139,7 @@ Expected: FAIL — `Cannot find module '../MultiStringFilterStore'`
 Create `src/stores/MultiStringFilterStore.ts`:
 
 ```ts
-import { FilterData } from "@mendix/filter-commons/typings/settings";
+import { FilterData, InputData, SelectData } from "@mendix/filter-commons/typings/settings";
 import { isInputData } from "@mendix/widget-plugin-dropdown-filter/stores/BaseSelectStore";
 import { Filter } from "@mendix/widget-plugin-filtering/typings/ObservableFilterHost";
 import { AttributeMetaData } from "mendix";
@@ -1147,6 +1160,20 @@ export interface MultiStringFilterStoreSpec {
     attributes: Array<AttributeMetaData<string>>;
     matchMode: MatchModeEnum;
     maxTerms: number;
+}
+
+/**
+ * `isInputData` decides purely on `data[0]` being an operator name, so a one-term list like
+ * `["contains"]` — a user searching for that literal word — would be misread as another
+ * widget's input-filter settings and silently dropped. `InputData` is always a 3-tuple, so
+ * gate the sniff on length.
+ *
+ * Extracted rather than inlined as `data.length === 3 && isInputData(data)`: TypeScript does
+ * not distribute narrowing through an inline `A && B` used as one disjunct of a `||` guard
+ * chain, so the inline form compiles but leaves `data` un-narrowed downstream.
+ */
+function looksLikeInputData(data: InputData | SelectData): data is InputData {
+    return data.length === 3 && isInputData(data);
 }
 
 /**
@@ -1324,7 +1351,7 @@ export class MultiStringFilterStore implements Filter {
     }
 
     fromJSON(data: FilterData): void {
-        if (data == null || !Array.isArray(data) || isInputData(data)) {
+        if (data == null || !Array.isArray(data) || looksLikeInputData(data)) {
             return;
         }
 
