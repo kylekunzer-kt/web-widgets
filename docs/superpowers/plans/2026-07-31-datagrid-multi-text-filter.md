@@ -2951,7 +2951,10 @@ Expected: PASS, no TypeScript errors
 - [ ] **Step 5: Verify the package format**
 
 Run: `cd packages/pluggableWidgets/datagrid-multi-text-filter-web && pnpm verify`
-Expected: PASS. If it reports missing icon or tile files, confirm the four PNGs from Step 1 exist with exactly the names listed.
+
+Expected: the widget-manifest stage reports success, then the run **fails with ENOENT on `CHANGELOG.md`**. That is a plan sequencing artifact, not a defect in this task — `CHANGELOG.md` is a Task 11 deliverable. `pnpm verify` cannot exit 0 for this package until Task 11 lands. Record what it says and move on.
+
+If it reports missing icon or tile files instead, confirm the four PNGs from Step 1 exist with exactly the names listed.
 
 - [ ] **Step 6: Commit**
 
