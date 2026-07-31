@@ -184,8 +184,11 @@ standard Mendix filter JS actions work:
 Built fresh rather than adapted from `TagPicker`, which is `downshift`-based and driven by an
 options universe — the wrong shape for free text. Visual primitives are reused so the widget
 matches the Dropdown filter: `Cross` and `classes(rootName)` from
-`widget-plugin-dropdown-filter/controls/picker-primitives`, plus `ClearButton`, all imported
-unchanged.
+`widget-plugin-dropdown-filter/controls/picker-primitives`, imported unchanged.
+
+`ClearButton` from that same package is **not** reused: its `aria-label` is hardcoded to
+"Clear selection", which is wrong for this widget and not overridable. The clear button is
+a few lines of local markup using the same `Cross` icon and `clear`/`clearIcon` classes.
 
 The component is fully controlled; all state lives in the mobx controller.
 
@@ -253,9 +256,12 @@ packages/modules/data-widgets/src/themesource/datawidgets/web/_datagrid-multi-te
   NEW
 ```
 
-The new SCSS partial reuses the existing `--wdf-*` custom properties and the `btn-with-cross`
-mixin rather than the `widget-dropdown-filter-*` class names themselves. Same appearance, no
-coupling to a file that changes upstream.
+The new SCSS partial uses Atlas-level variables with literal fallbacks and its own
+`widget-multi-text-filter-*` class names. It deliberately does not consume the dropdown
+filter's `--wdf-*` custom properties or its `btn-with-cross` mixin: `--wdf-*` are declared on
+the `.widget-dropdown-filter` root selector itself, so they do not cascade to our elements and
+would resolve to nothing. Chip proportions, border radius, and font size are matched by value
+so the two widgets read as siblings, with no coupling to a file that changes upstream.
 
 ## Error handling
 
