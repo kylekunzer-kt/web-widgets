@@ -1628,7 +1628,12 @@ interface TermChipInputProps {
 }
 ```
 
-Note on the change handler: typed commas and pasted text arrive through the same `change` event, so one handler covers both. When the new value contains a delimiter it goes to `onCommit`; otherwise to `onInputChange`. No separate paste handler is needed.
+Note on the two input handlers: `input[type=text]` runs the HTML value-sanitization algorithm, which **strips `\r` and `\n`**. A newline-separated paste (a column copied from Excel) therefore reaches `onChange` already collapsed into a single term, and no amount of change-handler logic can recover it. So the component needs both:
+
+- `onPaste` — intercepts pastes that contain a delimiter, reading `clipboardData` directly and calling `onCommit` with the raw text. Pastes with no delimiter early-return so they flow through the normal controlled-input path.
+- `onChange` — typed delimiters and all ordinary typing. Typing `,` never produces a paste event.
+
+`preventDefault()` in the paste branch is what keeps a delimiter paste from producing both an `onCommit` and a subsequent `onChange`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1799,7 +1804,7 @@ Create `src/components/TermChipInput.tsx`:
 ```tsx
 import { Cross, classes } from "@mendix/widget-plugin-dropdown-filter/controls/picker-primitives";
 import classNames from "classnames";
-import { ChangeEvent, CSSProperties, FocusEvent, KeyboardEvent, ReactElement, RefObject } from "react";
+import { ChangeEvent, ClipboardEvent, CSSProperties, FocusEvent, KeyboardEvent, ReactElement, RefObject } from "react";
 import { TERM_DELIMITERS } from "../utils/normalize-terms";
 
 const cls = classes("widget-multi-text-filter");
@@ -1837,8 +1842,8 @@ export function TermChipInput(props: TermChipInputProps): ReactElement {
 
     const showClear = terms.length > 0 || inputValue !== "";
 
-    // Typed delimiters and pasted text both surface as a change event, so one
-    // handler covers both. No separate paste handler is needed.
+    // Typed input only. Delimiter-containing pastes are intercepted by handlePaste
+    // below, because `input type=text` strips newlines during value sanitization.
     const handleChange = (event: ChangeEvent<HTMLInputElement>): void => {
         const next = event.target.value;
         if (TERM_DELIMITERS.test(next)) {
@@ -1846,6 +1851,22 @@ export function TermChipInput(props: TermChipInputProps): ReactElement {
             return;
         }
         onInputChange(next);
+    };
+
+    const handlePaste = (event: ClipboardEvent<HTMLInputElement>): void => {
+        const pasted = event.clipboardData.getData("text");
+
+        if (!TERM_DELIMITERS.test(pasted)) {
+            // No delimiters — let the normal change handler take it, so the pasted
+            // text lands in the input like ordinary typing.
+            return;
+        }
+
+        // `input type=text` strips newlines in its value-sanitization algorithm, so a
+        // newline-separated paste (e.g. a column copied from Excel) would reach onChange
+        // already collapsed into one term. Read the clipboard directly instead.
+        event.preventDefault();
+        onCommit(pasted);
     };
 
     const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
@@ -1911,6 +1932,7 @@ export function TermChipInput(props: TermChipInputProps): ReactElement {
                     aria-label={ariaLabel}
                     tabIndex={props.tabIndex}
                     onChange={handleChange}
+                    onPaste={handlePaste}
                     onKeyDown={handleKeyDown}
                     onBlur={handleBlur}
                 />

@@ -21,14 +21,14 @@ mode. See [Rejected alternatives](#rejected-alternatives).
 
 ## Decisions
 
-| Decision | Choice | Reason |
-| --- | --- | --- |
-| Term combination | OR (match any term) | Driving use case is looking up a known set of values |
-| Input model | Chip/token input with comma-paste | Comma-only text is ambiguous when values contain commas, and gives no feedback on how the input parsed |
-| Packaging | New standalone package | Repo is a fork of `mendix/web-widgets`; modifying `datagrid-text-filter-web` or the shared filtering plugin makes every upstream rebase a conflict |
-| Match mode | Studio Pro property, one of `contains` / `equal` / `startsWith` | Covers exact ID lookup and fuzzy search without an end-user dropdown to build and test |
-| Term limit | `maxTerms` property, default 100, warn on overflow | Bounds the generated `or()` tree; silent truncation would hand the user wrong results |
-| Attribute selection | Always explicit (`linkedDs` + `attributes`) | Required to own our own store; also the right default, since multi-term search usually spans columns |
+| Decision            | Choice                                                          | Reason                                                                                                                                             |
+| ------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Term combination    | OR (match any term)                                             | Driving use case is looking up a known set of values                                                                                               |
+| Input model         | Chip/token input with comma-paste                               | Comma-only text is ambiguous when values contain commas, and gives no feedback on how the input parsed                                             |
+| Packaging           | New standalone package                                          | Repo is a fork of `mendix/web-widgets`; modifying `datagrid-text-filter-web` or the shared filtering plugin makes every upstream rebase a conflict |
+| Match mode          | Studio Pro property, one of `contains` / `equal` / `startsWith` | Covers exact ID lookup and fuzzy search without an end-user dropdown to build and test                                                             |
+| Term limit          | `maxTerms` property, default 100, warn on overflow              | Bounds the generated `or()` tree; silent truncation would hand the user wrong results                                                              |
+| Attribute selection | Always explicit (`linkedDs` + `attributes`)                     | Required to own our own store; also the right default, since multi-term search usually spans columns                                               |
 
 ## Architecture
 
@@ -103,9 +103,9 @@ keeps the change confined to this package.
 
 ```ts
 class MultiStringFilterStore implements Filter {
-    terms: string[];                  // observable.struct; paste order preserved
-    liveTerm: string;                 // observable; debounced uncommitted input text
-    droppedCount: number;             // observable; terms rejected by the cap on the last set
+    terms: string[]; // observable.struct; paste order preserved
+    liveTerm: string; // observable; debounced uncommitted input text
+    droppedCount: number; // observable; terms rejected by the cap on the last set
     private _attributes: Array<AttributeMetaData<string>>;
     private _matchMode: "contains" | "equal" | "startsWith";
     private _maxTerms: number;
@@ -121,11 +121,11 @@ edits the list.
 
 "Terms" below means the committed chips plus `liveTerm` when it is non-empty.
 
-| Terms | Attributes | Result |
-| --- | --- | --- |
-| 0 | any | `undefined` — filter inactive |
-| 1 | 1 | bare `contains(a, "x")`, no `or()` wrapper |
-| n | m | one flat `or(...)` with n × m branches |
+| Terms | Attributes | Result                                     |
+| ----- | ---------- | ------------------------------------------ |
+| 0     | any        | `undefined` — filter inactive              |
+| 1     | 1          | bare `contains(a, "x")`, no `or()` wrapper |
+| n     | m          | one flat `or(...)` with n × m branches     |
 
 Flat rather than nested, matching `EnumFilterStore.condition`. Attributes where
 `filterable === false` are skipped, as `BaseInputFilterStore` does. `matchMode` maps onto the
@@ -152,11 +152,11 @@ a hard bound on the number of branches, never `maxTerms + 1`.
 
 Three independent channels, all required for a filter widget to behave correctly:
 
-| Channel | Methods | Shape | Purpose |
-| --- | --- | --- | --- |
-| Grid settings (personalization) | `toJSON` / `fromJSON` | `string[]` | Same shape as `BaseSelectStore.toJSON()` |
-| Datasource view state | `fromViewState(cond)` | parse the `or()` tree | Restores the filter after page navigation / back button |
-| Saved attribute | `valueAttribute` | comma-joined string | Optional Mendix attribute binding, as on the Text filter |
+| Channel                         | Methods               | Shape                 | Purpose                                                  |
+| ------------------------------- | --------------------- | --------------------- | -------------------------------------------------------- |
+| Grid settings (personalization) | `toJSON` / `fromJSON` | `string[]`            | Same shape as `BaseSelectStore.toJSON()`                 |
+| Datasource view state           | `fromViewState(cond)` | parse the `or()` tree | Restores the filter after page navigation / back button  |
+| Saved attribute                 | `valueAttribute`      | comma-joined string   | Optional Mendix attribute binding, as on the Text filter |
 
 `fromJSON` ignores malformed input (non-array, or an array containing non-strings) rather than
 throwing, matching `BaseSelectStore.fromJSON`.
@@ -199,14 +199,31 @@ props: terms, inputValue, placeholder, disabled, ariaLabel,
 
 ### Keyboard and paste behavior
 
-| Input | Result |
-| --- | --- |
-| `Enter`, `,`, `Tab` | commit current text as a chip, clear the input |
-| paste containing `,`, newline, or tab | split, normalize, append all |
-| `Backspace` on an empty input | remove the last chip |
-| `Escape` | clear the input text only; chips untouched |
-| blur | commit pending text |
-| clear button | remove all chips and the input text |
+| Input                                 | Result                                                 |
+| ------------------------------------- | ------------------------------------------------------ |
+| `Enter`, `,`, `Tab`                   | commit current text as a chip, clear the input         |
+| paste containing `,`, newline, or tab | intercepted by `onPaste`; split, normalize, append all |
+| `Backspace` on an empty input         | remove the last chip                                   |
+| `Escape`                              | clear the input text only; chips untouched             |
+| blur                                  | commit pending text                                    |
+| clear button                          | remove all chips and the input text                    |
+
+### Why there are two input handlers, not one
+
+`input[type=text]` runs the HTML value-sanitization algorithm, which **strips `\r` and `\n`**.
+A newline-separated paste — a column copied out of Excel, which is the headline use case for
+this widget — therefore arrives at `onChange` already collapsed into a single term, and no
+change-handler logic can recover the lost structure.
+
+So `onPaste` reads `clipboardData` directly and calls `onCommit` with the raw text, but only
+when the pasted text contains a delimiter; delimiter-free pastes early-return and flow through
+the normal controlled-input path. `onChange` keeps typed delimiters and ordinary typing, since
+typing `,` never produces a paste event. `preventDefault()` on the intercepting branch is what
+stops a single paste from firing both `onCommit` and a follow-up `onChange`.
+
+A `<textarea>` would preserve newlines and was considered, but a single-line-styled textarea
+brings Enter-key semantics that fight the commit behavior, plus sizing and Atlas-styling
+problems. Six lines of paste handler is the cheaper trade.
 
 ### Accessibility
 
@@ -220,19 +237,19 @@ props: terms, inputValue, placeholder, disabled, ariaLabel,
 Follows the Text filter's property layout, dropping `attrChoice`, `adjustable`, and
 `defaultFilter`.
 
-| Key | Type | Default | Notes |
-| --- | --- | --- | --- |
-| `linkedDs` | datasource, `isLinked`, `isList` | — | Same pattern as the Text filter |
-| `attributes` | object list containing `attribute` | — | `String` attributes only |
-| `matchMode` | enumeration | `contains` | `contains` / `equal` / `startsWith` |
-| `maxTerms` | integer | `100` | Cap; excess triggers the overflow warning |
-| `defaultValue` | expression, `String` | — | Parsed as a term list |
-| `delay` | integer | `500` | Debounce for the in-progress input text |
-| `placeholder` | textTemplate | — | |
-| `valueAttribute` | attribute, `String`/`HashString` | — | Comma-joined round-trip |
-| `onChange` | action | — | |
-| `screenReaderInputCaption` | textTemplate | — | |
-| `removeTermCaption` | textTemplate | — | aria-label for chip remove buttons |
+| Key                        | Type                               | Default    | Notes                                     |
+| -------------------------- | ---------------------------------- | ---------- | ----------------------------------------- |
+| `linkedDs`                 | datasource, `isLinked`, `isList`   | —          | Same pattern as the Text filter           |
+| `attributes`               | object list containing `attribute` | —          | `String` attributes only                  |
+| `matchMode`                | enumeration                        | `contains` | `contains` / `equal` / `startsWith`       |
+| `maxTerms`                 | integer                            | `100`      | Cap; excess triggers the overflow warning |
+| `defaultValue`             | expression, `String`               | —          | Parsed as a term list                     |
+| `delay`                    | integer                            | `500`      | Debounce for the in-progress input text   |
+| `placeholder`              | textTemplate                       | —          |                                           |
+| `valueAttribute`           | attribute, `String`/`HashString`   | —          | Comma-joined round-trip                   |
+| `onChange`                 | action                             | —          |                                           |
+| `screenReaderInputCaption` | textTemplate                       | —          |                                           |
+| `removeTermCaption`        | textTemplate                       | —          | aria-label for chip remove buttons        |
 
 Property keys are lowerCamelCase and must match the generated
 `typings/DatagridMultiTextFilterProps.d.ts` exactly.
@@ -265,14 +282,14 @@ so the two widgets read as siblings, with no coupling to a file that changes ups
 
 ## Error handling
 
-| Condition | Behavior |
-| --- | --- |
-| No FilterAPI context (widget outside a grid) | `ENOCONTEXT` Alert, via `withFilterAPI` |
-| Selected attribute not filterable | Alert, via `withAttributeGuard` |
-| No attributes configured | `condition` is `undefined`; the filter is inert |
-| Paste exceeds `maxTerms` | First `maxTerms` applied; warning Alert names the applied and dropped counts |
-| Malformed persisted settings | `fromJSON` ignores the input, leaving current terms |
-| `starts-with` tree in view state | Parsed correctly by the local `termsFromCond` |
+| Condition                                    | Behavior                                                                     |
+| -------------------------------------------- | ---------------------------------------------------------------------------- |
+| No FilterAPI context (widget outside a grid) | `ENOCONTEXT` Alert, via `withFilterAPI`                                      |
+| Selected attribute not filterable            | Alert, via `withAttributeGuard`                                              |
+| No attributes configured                     | `condition` is `undefined`; the filter is inert                              |
+| Paste exceeds `maxTerms`                     | First `maxTerms` applied; warning Alert names the applied and dropped counts |
+| Malformed persisted settings                 | `fromJSON` ignores the input, leaving current terms                          |
+| `starts-with` tree in view state             | Parsed correctly by the local `termsFromCond`                                |
 
 ## Testing
 
