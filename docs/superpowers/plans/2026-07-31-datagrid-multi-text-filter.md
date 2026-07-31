@@ -519,7 +519,7 @@ Parses a persisted filter condition back into terms. This exists because shared 
 Create `src/utils/__tests__/terms-from-cond.spec.ts`:
 
 ```ts
-import { attribute, contains, equals, literal, or, startsWith } from "mendix/filters/builders";
+import { attribute, contains, equals, greaterThan, literal, or, startsWith } from "mendix/filters/builders";
 import { termsFromCond } from "../terms-from-cond";
 
 const attrA = attribute("attr_a");
@@ -558,8 +558,12 @@ describe("termsFromCond", () => {
         expect(termsFromCond(cond)).toEqual(["a", "b"]);
     });
 
-    it("ignores branches with an unrecognized operator", () => {
-        const cond = or(contains(attrA, literal("keep")), equals(attrA, literal("also-keep")));
+    it("skips branches whose operator is not a supported match mode", () => {
+        const cond = or(
+            contains(attrA, literal("keep")),
+            greaterThan(attrA, literal("skip-me")),
+            equals(attrA, literal("also-keep"))
+        );
         expect(termsFromCond(cond)).toEqual(["keep", "also-keep"]);
     });
 
@@ -567,13 +571,19 @@ describe("termsFromCond", () => {
         expect(termsFromCond(equals(attrA, literal(true)))).toEqual([]);
     });
 
-    it("returns an empty list for a condition it cannot interpret", () => {
+    it("returns an empty list when no branch is interpretable", () => {
+        expect(termsFromCond(greaterThan(attrA, literal("x")))).toEqual([]);
+    });
+
+    it("reads the right-hand literal even from a literal-to-literal comparison", () => {
+        // Not a condition this widget produces. Asserted to pin the behavior: returning a
+        // stray term is preferable to throwing during view-state restore.
         expect(termsFromCond(equals(literal("a"), literal("b")))).toEqual(["b"]);
     });
 });
 ```
 
-Note on the last test: a literal-to-literal comparison still yields its right-hand literal. That is harmless — such a condition is never produced by this widget, and returning a stray term is preferable to throwing during view-state restore.
+Add `greaterThan` to the import from `mendix/filters/builders` in this spec file.
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
@@ -627,7 +637,7 @@ export function termsFromCond(cond: FilterCondition): string[] {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `cd packages/pluggableWidgets/datagrid-multi-text-filter-web && pnpm test -- terms-from-cond`
-Expected: PASS, 9 tests
+Expected: PASS, 10 tests
 
 If TypeScript complains that `arg2` lacks `valueType` or `value`, narrow explicitly instead of casting away safety:
 
