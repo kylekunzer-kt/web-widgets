@@ -2,6 +2,7 @@ import "@testing-library/jest-dom";
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { createRef } from "react";
 import { TermChipInput, TermChipInputProps } from "../TermChipInput";
 
 function setup(overrides: Partial<TermChipInputProps> = {}): {
@@ -48,6 +49,12 @@ describe("TermChipInput", () => {
         expect(screen.getByPlaceholderText("type or paste a list")).toBeInTheDocument();
     });
 
+    it("attaches inputRef to the input element", () => {
+        const inputRef = createRef<HTMLInputElement>();
+        setup({ inputRef });
+        expect(inputRef.current).toBe(screen.getByRole("textbox"));
+    });
+
     it("reports plain typing through onInputChange", async () => {
         const { props, user } = setup();
         await user.type(screen.getByRole("textbox"), "a");
@@ -92,13 +99,17 @@ describe("TermChipInput", () => {
     it("commits on Tab when the input has text", async () => {
         const { props, user } = setup({ inputValue: "abc" });
         await user.type(screen.getByRole("textbox"), "{Tab}");
+        expect(props.onCommit).toHaveBeenCalledTimes(1);
         expect(props.onCommit).toHaveBeenCalledWith("abc");
     });
 
     it("does not swallow Tab when the input is empty", async () => {
         const { props, user } = setup({ inputValue: "" });
-        await user.type(screen.getByRole("textbox"), "{Tab}");
+        const input = screen.getByRole("textbox");
+        input.focus();
+        await user.tab();
         expect(props.onCommit).not.toHaveBeenCalled();
+        expect(document.activeElement).not.toBe(input);
     });
 
     it("removes the last chip on Backspace with an empty input", async () => {

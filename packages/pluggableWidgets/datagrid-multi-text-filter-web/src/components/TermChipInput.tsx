@@ -75,11 +75,9 @@ export function TermChipInput(props: TermChipInputProps): ReactElement {
                     onCommit(inputValue);
                 }
                 return;
-            case "Tab":
-                if (inputValue.trim() !== "") {
-                    onCommit(inputValue);
-                }
-                return;
+            // Tab intentionally does not commit here. It must not preventDefault (focus has to
+            // move), and the resulting focus change fires blur, which commits pending text. If
+            // this case also committed, one Tab would commit twice.
             case "Backspace":
                 if (inputValue === "") {
                     event.preventDefault();
