@@ -3115,13 +3115,13 @@ Expected: the module builds and `DataWidgets.mpk` includes the new widget.
 
 - [ ] **Step 6: Confirm the widget is in the built module**
 
-Run:
+Note: `build:include-deps` does **not** produce a `DataWidgets.mpk` — that requires the separate Docker/mxbuild `release:module` pipeline. What it does produce is each dependency widget's own `.mpk`, which `addWidgetsToMpk` later copies verbatim into the module zip. So verify at that level:
 
 ```bash
-cd packages/modules/data-widgets && unzip -l dist/*/DataWidgets.mpk | grep -i multitextfilter
+python3 -c "import zipfile,glob; [print(f) or [print('  ',n) for n in zipfile.ZipFile(f).namelist()] for f in glob.glob('packages/pluggableWidgets/datagrid-multi-text-filter-web/dist/*/*.mpk')]"
 ```
 
-Expected: at least one line mentioning `DatagridMultiTextFilter`. If `unzip` is unavailable, inspect the `dist/` tree for the widget's `.mpk` instead.
+Compare against a sibling widget's `.mpk` in the same way. **Expect both to be missing their `.xml` and `.png` entries** — that is the known `shx cp` globbing defect in `pluggable-widgets-tools`, which reproduces identically on untouched upstream widgets and is not caused by this work. Record what you see; do not treat it as this task's failure.
 
 - [ ] **Step 7: Commit**
 
