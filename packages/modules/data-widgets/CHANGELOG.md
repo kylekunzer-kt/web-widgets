@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- We added the Multi text filter widget, which filters Data Grid 2 rows by several search terms at once.
+
 ## [3.11.3] DataWidgets - 2026-07-27
 
 ### [3.11.3] DatagridDropdownFilter

@@ -17,6 +17,7 @@
         "dependencies": [
             "@mendix/datagrid-date-filter-web",
             "@mendix/datagrid-dropdown-filter-web",
+            "@mendix/datagrid-multi-text-filter-web",
             "@mendix/datagrid-number-filter-web",
             "@mendix/datagrid-text-filter-web",
             "@mendix/datagrid-web",
@@ -54,6 +55,7 @@
     "dependencies": {
         "@mendix/datagrid-date-filter-web": "workspace:*",
         "@mendix/datagrid-dropdown-filter-web": "workspace:*",
+        "@mendix/datagrid-multi-text-filter-web": "workspace:*",
         "@mendix/datagrid-number-filter-web": "workspace:*",
         "@mendix/datagrid-text-filter-web": "workspace:*",
         "@mendix/datagrid-web": "workspace:*",

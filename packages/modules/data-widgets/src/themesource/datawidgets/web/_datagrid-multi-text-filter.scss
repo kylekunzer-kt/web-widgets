@@ -1,0 +1,97 @@
+$root: ".widget-multi-text-filter";
+
+.widget-multi-text-filter-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-smallest, 2px);
+    width: 100%;
+}
+
+#{$root} {
+    align-items: center;
+    background-color: var(--bg-color-default, #fff);
+    border: 1px solid var(--brand-default, #ced0d3);
+    border-radius: var(--border-radius-default, 4px);
+    display: flex;
+    flex-flow: row nowrap;
+    min-height: 34px;
+    padding: 0 var(--spacing-smallest, 2px);
+    width: 100%;
+
+    &:focus-within {
+        border-color: var(--brand-primary, #0595db);
+    }
+
+    &-input-container {
+        align-items: center;
+        display: flex;
+        flex: 1;
+        flex-flow: row wrap;
+        gap: var(--spacing-smallest, 2px);
+        min-width: 0;
+        padding: var(--spacing-smallest, 2px);
+    }
+
+    &-terms {
+        display: contents;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    &-selected-item {
+        align-items: center;
+        background-color: var(--color-primary-lighter, #e5f5fd);
+        border-radius: 26px;
+        display: inline-flex;
+        flex-flow: row nowrap;
+        font-size: var(--font-size-small, 12px);
+        gap: 6px;
+        line-height: 1.334;
+        max-width: 100%;
+        padding: 2px 4px 2px 10px;
+    }
+
+    &-term-text {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    &-remove-icon,
+    &-clear {
+        align-items: center;
+        background: none;
+        border: none;
+        color: inherit;
+        cursor: pointer;
+        display: flex;
+        padding: 2px;
+
+        &:focus-visible {
+            outline: 1px solid var(--brand-primary, #0595db);
+        }
+    }
+
+    &-input {
+        background-color: transparent;
+        border: none;
+        flex: 1;
+        min-width: 80px;
+        outline: none;
+        padding: 2px 4px;
+    }
+}
+
+// The term count is announced by screen readers but not shown visually.
+.widget-multi-text-filter-status {
+    border: 0;
+    clip: rect(0 0 0 0);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+}

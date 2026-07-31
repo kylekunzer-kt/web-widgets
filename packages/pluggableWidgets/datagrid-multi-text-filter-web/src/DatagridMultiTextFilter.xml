@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<widget id="com.mendix.widget.web.datagridmultitextfilter.DatagridMultiTextFilter" pluginWidget="true" offlineCapable="true" xmlns="http://www.mendix.com/widget/1.0/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mendix.com/widget/1.0/ ../../../../node_modules/mendix/custom_widget.xsd">
+    <name>Multi text filter</name>
+    <description>Filter rows by multiple search terms at once.</description>
+    <studioProCategory>Data controls</studioProCategory>
+    <studioCategory>Data Controls</studioCategory>
+    <properties>
+        <propertyGroup caption="General">
+            <propertyGroup caption="General">
+                <property key="linkedDs" type="datasource" isLinked="true" isList="true">
+                    <caption>Datasource to Filter</caption>
+                    <description />
+                </property>
+                <property key="attributes" type="object" isList="true" required="true">
+                    <caption>Attributes</caption>
+                    <description>Select the attributes to search. A row matches when any term matches any of these attributes.</description>
+                    <properties>
+                        <propertyGroup caption="General">
+                            <property key="attribute" type="attribute" dataSource="../linkedDs" isMetaData="true" required="true">
+                                <caption>Attribute</caption>
+                                <description />
+                                <attributeTypes>
+                                    <attributeType name="String" />
+                                </attributeTypes>
+                            </property>
+                        </propertyGroup>
+                    </properties>
+                </property>
+                <property key="matchMode" type="enumeration" defaultValue="contains">
+                    <caption>Match mode</caption>
+                    <description>How each individual term is matched against the attributes.</description>
+                    <enumerationValues>
+                        <enumerationValue key="contains">Contains</enumerationValue>
+                        <enumerationValue key="equal">Equal</enumerationValue>
+                        <enumerationValue key="startsWith">Starts with</enumerationValue>
+                    </enumerationValues>
+                </property>
+                <property key="maxTerms" type="integer" defaultValue="100">
+                    <caption>Maximum terms</caption>
+                    <description>Upper bound on the number of search terms. Each term adds one condition per selected attribute, so high values slow down large datasources.</description>
+                </property>
+                <property key="defaultValue" type="expression" required="false">
+                    <caption>Default value</caption>
+                    <description>Comma-separated list of terms applied when the filter first loads.</description>
+                    <returnType type="String" />
+                </property>
+                <property key="placeholder" type="textTemplate" required="false">
+                    <caption>Placeholder</caption>
+                    <description />
+                </property>
+            </propertyGroup>
+            <propertyGroup caption="On change behavior">
+                <property key="delay" type="integer" defaultValue="500">
+                    <caption>Apply after (ms)</caption>
+                    <description>Wait this period before applying the term that is still being typed</description>
+                </property>
+            </propertyGroup>
+            <propertyGroup caption="Configurations">
+                <property key="valueAttribute" type="attribute" required="false">
+                    <caption>Saved attribute</caption>
+                    <description>Attribute used to store the last value of the filter, as a comma-separated list.</description>
+                    <attributeTypes>
+                        <attributeType name="String" />
+                        <attributeType name="HashString" />
+                    </attributeTypes>
+                </property>
+            </propertyGroup>
+            <propertyGroup caption="Events">
+                <property key="onChange" type="action" required="false">
+                    <caption>On change</caption>
+                    <description>Action to be triggered when the terms change.</description>
+                </property>
+            </propertyGroup>
+        </propertyGroup>
+        <propertyGroup caption="Accessibility">
+            <propertyGroup caption="Screen reader">
+                <property key="screenReaderInputCaption" type="textTemplate" required="false">
+                    <caption>Input caption</caption>
+                    <description>Assistive technology will read this upon reaching the input element.</description>
+                    <translations>
+                        <translation lang="en_US">Search terms</translation>
+                    </translations>
+                </property>
+                <property key="removeTermCaption" type="textTemplate" required="false">
+                    <caption>Remove term caption</caption>
+                    <description>Assistive technology will read this on the button that removes a term.</description>
+                    <translations>
+                        <translation lang="en_US">Remove term</translation>
+                    </translations>
+                </property>
+            </propertyGroup>
+        </propertyGroup>
+    </properties>
+</widget>
