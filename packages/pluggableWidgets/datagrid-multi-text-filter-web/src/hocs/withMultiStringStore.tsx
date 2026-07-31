@@ -1,13 +1,12 @@
 import { FilterAPI } from "@mendix/widget-plugin-filtering/context";
 import { useSetup } from "@mendix/widget-plugin-mobx-kit/react/useSetup";
-import { AttributeMetaData } from "mendix";
 import { FC } from "react";
-import { MatchModeEnum } from "../../typings/DatagridMultiTextFilterProps";
+import { AttributesType, MatchModeEnum } from "../../typings/DatagridMultiTextFilterProps";
 import { MultiStringFilterProps } from "../components/typings";
 import { MultiStringStoreProvider } from "../stores/MultiStringStoreProvider";
 
 interface RequiredProps {
-    attributes: Array<{ attribute: AttributeMetaData<string> }>;
+    attributes: AttributesType[];
     matchMode: MatchModeEnum;
     maxTerms: number;
     name: string;
