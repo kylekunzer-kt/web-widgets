@@ -64,7 +64,12 @@ export function TermChipInput(props: TermChipInputProps): ReactElement {
         // newline-separated paste (e.g. a column copied from Excel) would reach onChange
         // already collapsed into one term. Read the clipboard directly instead.
         event.preventDefault();
-        onCommit(pasted);
+
+        // Prepend any pending (not-yet-committed) input text so it isn't silently
+        // discarded by this paste. Joining with a delimiter is lossless because a term
+        // can never itself contain a delimiter — that invariant is what normalizeTerms
+        // relies on to split the joined string back into the right terms.
+        onCommit(inputValue.trim() !== "" ? `${inputValue},${pasted}` : pasted);
     };
 
     const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {

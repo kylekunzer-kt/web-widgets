@@ -24,3 +24,7 @@ matches **any** of the selected attributes.
   bounds this. For lookups of many hundreds of values, a microflow datasource with an OQL
   `in` clause performs far better than a client-side filter.
 - Terms cannot contain a comma, tab, or newline — those characters split the term.
+- The Playwright E2E suite (`e2e/DatagridMultiTextFilter.spec.js`) requires a fixture page
+  (`/p/multi-text-filter`, with this widget on a Data Grid 2) in the Mendix test project. That
+  page does not exist yet, so the suite is currently marked `test.describe.fixme` and E2E
+  coverage for this widget is pending until the fixture page is added.

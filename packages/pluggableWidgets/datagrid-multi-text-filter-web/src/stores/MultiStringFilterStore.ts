@@ -65,7 +65,7 @@ export class MultiStringFilterStore implements Filter {
     constructor(spec: MultiStringFilterStoreSpec, initCond: FilterCondition | null) {
         this._attributes = spec.attributes;
         this._matchMode = spec.matchMode;
-        this._maxTerms = spec.maxTerms;
+        this._maxTerms = Math.max(1, Math.floor(spec.maxTerms));
 
         makeObservable<this, "_attributes" | "_matchMode" | "_maxTerms">(this, {
             terms: observable.struct,
@@ -91,6 +91,10 @@ export class MultiStringFilterStore implements Filter {
             fromViewState: action
         });
 
+        // `initCond` mirrors a shared-precedent constructor parameter (other filter stores in
+        // this codebase accept it too); production never actually calls this constructor with a
+        // non-null value, since MultiStringStoreProvider always passes `null` and view-state
+        // restoration for this widget happens exclusively through CustomFilterHost.observe().
         if (initCond) {
             this.fromViewState(initCond);
         }
@@ -128,6 +132,10 @@ export class MultiStringFilterStore implements Filter {
         const branches: FilterCondition[] = [];
 
         for (const attr of this._attributes) {
+            // Shared-precedent parity with other filter stores' `condition` getters. In
+            // production this branch is unreachable: `DatagridMultiTextFilter` refuses to
+            // render (and never mounts this store against a live grid) when any selected
+            // attribute is not filterable, so every attribute here is already filterable.
             if (!attr.filterable) {
                 continue;
             }
@@ -186,6 +194,15 @@ export class MultiStringFilterStore implements Filter {
     /**
      * Stores the configured default and applies it, unless terms already came from
      * persisted settings or view state — those must win over the design-time default.
+     *
+     * The `!isInitialized` guard alone does not guarantee that precedence: it only stops
+     * this method from clobbering terms that were already set. What actually makes settings
+     * win is effect ordering — React runs effects child-first, so the controller's
+     * `setup()` (which calls this method) always runs before the parent HOC's
+     * `provider.setup()` → `observe()` → `fromJSON`, which lands afterwards and
+     * unconditionally overwrites whatever this method just applied. Moving this call into
+     * the HOC or the store constructor would run it after `fromJSON` instead of before it,
+     * silently inverting precedence and discarding users' saved personalization.
      */
     setDefaultTerms(defaultValue: string | undefined): void {
         this._defaultTerms = defaultValue ? normalizeTerms(defaultValue, this._maxTerms).terms : [];
@@ -201,11 +218,11 @@ export class MultiStringFilterStore implements Filter {
             this._attributes = spec.attributes;
         }
         this._matchMode = spec.matchMode;
-        this._maxTerms = spec.maxTerms;
+        this._maxTerms = Math.max(1, Math.floor(spec.maxTerms));
     }
 
     toJSON(): FilterData {
-        return this.isInitialized ? this.terms : undefined;
+        return this.isInitialized ? [...this.terms] : undefined;
     }
 
     fromJSON(data: FilterData): void {

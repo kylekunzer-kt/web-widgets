@@ -64,6 +64,16 @@ describe("DatagridMultiTextFilter", () => {
         expect(screen.getAllByRole("listitem")).toHaveLength(2);
     });
 
+    it("lets persisted settings win over the configured default value", () => {
+        filterHost.fromJSON([["filter-test", ["x", "y"]]]);
+
+        render(<DatagridMultiTextFilter {...commonProps({ defaultValue: dynamic.available("a,b") })} />);
+
+        expect(screen.getAllByRole("listitem")).toHaveLength(2);
+        expect(screen.getByText("x")).toBeInTheDocument();
+        expect(screen.getByText("y")).toBeInTheDocument();
+    });
+
     it("turns a pasted list into chips and produces an or condition", async () => {
         const user = userEvent.setup();
         render(<DatagridMultiTextFilter {...commonProps()} />);
@@ -77,6 +87,22 @@ describe("DatagridMultiTextFilter", () => {
         expect(cond).toBeDefined();
         expect(cond!.name).toBe("or");
         expect((cond as any).args).toHaveLength(3);
+    });
+
+    it("keeps a typed term when a delimiter-containing list is pasted afterwards", async () => {
+        const user = userEvent.setup();
+        render(<DatagridMultiTextFilter {...commonProps()} />);
+
+        const input = screen.getByRole("textbox");
+        await user.click(input);
+        await user.type(input, "Bob");
+        await user.paste("Alice,Carol");
+
+        const items = screen.getAllByRole("listitem");
+        expect(items).toHaveLength(3);
+        expect(screen.getByText("Bob")).toBeInTheDocument();
+        expect(screen.getByText("Alice")).toBeInTheDocument();
+        expect(screen.getByText("Carol")).toBeInTheDocument();
     });
 
     it("splits a tab-separated paste into chips and produces an or condition", async () => {

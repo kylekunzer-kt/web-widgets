@@ -96,6 +96,22 @@ describe("TermChipInput", () => {
         expect(props.onCommit).toHaveBeenCalledWith("a\nb\nc");
     });
 
+    it("preserves pending input text when a delimiter-containing list is pasted", async () => {
+        const { props, user } = setup({ inputValue: "Bob" });
+        await user.click(screen.getByRole("textbox"));
+        await user.paste("Alice,Carol");
+        expect(props.onCommit).toHaveBeenCalledTimes(1);
+        expect((props.onCommit as jest.Mock).mock.calls[0][0]).toContain("Bob");
+    });
+
+    it("routes a delimiter-free paste through onInputChange, not onCommit", async () => {
+        const { props, user } = setup();
+        await user.click(screen.getByRole("textbox"));
+        await user.paste("Alfred");
+        expect(props.onCommit).not.toHaveBeenCalled();
+        expect(props.onInputChange).toHaveBeenCalledWith("Alfred");
+    });
+
     it("commits on Tab when the input has text", async () => {
         const { props, user } = setup({ inputValue: "abc" });
         await user.type(screen.getByRole("textbox"), "{Tab}");

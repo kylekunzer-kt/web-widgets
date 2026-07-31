@@ -1162,9 +1162,6 @@ importers:
       '@mendix/widget-plugin-filtering':
         specifier: workspace:*
         version: link:../../shared/widget-plugin-filtering
-      '@mendix/widget-plugin-hooks':
-        specifier: workspace:*
-        version: link:../../shared/widget-plugin-hooks
       '@mendix/widget-plugin-mobx-kit':
         specifier: workspace:^
         version: link:../../shared/widget-plugin-mobx-kit

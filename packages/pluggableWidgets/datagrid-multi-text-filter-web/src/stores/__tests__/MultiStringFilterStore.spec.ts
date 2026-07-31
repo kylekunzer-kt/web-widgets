@@ -121,6 +121,27 @@ describe("MultiStringFilterStore", () => {
             store.setLiveTerm("c");
             expect(store.liveTermSuppressed).toBe(false);
         });
+
+        it("clamps a maxTerms of 0 to 1, so typing still filters and the warning is not stuck on", () => {
+            const store = makeStore({ maxTerms: 0 });
+            store.setTerms("a");
+            expect(store.droppedCount).toBe(0);
+            store.setLiveTerm("b");
+            expect(store.liveTermSuppressed).toBe(true);
+
+            const emptyStore = makeStore({ maxTerms: 0 });
+            emptyStore.setLiveTerm("a");
+            expect(emptyStore.activeTerms).toEqual(["a"]);
+            expect(emptyStore.liveTermSuppressed).toBe(false);
+        });
+
+        it("clamps a fractional maxTerms of 2.5 down to 2, never admitting a 3rd active term", () => {
+            const store = makeStore({ maxTerms: 2.5 });
+            store.setTerms("a,b");
+            store.setLiveTerm("c");
+            expect(store.activeTerms).toEqual(["a", "b"]);
+            expect(store.liveTermSuppressed).toBe(true);
+        });
     });
 
     describe("term mutation", () => {
