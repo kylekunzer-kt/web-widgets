@@ -1952,7 +1952,7 @@ export function TermChipInput(props: TermChipInputProps): ReactElement {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `cd packages/pluggableWidgets/datagrid-multi-text-filter-web && pnpm test -- TermChipInput`
-Expected: PASS, 21 tests
+Expected: PASS, 20 tests
 
 If `TERM_DELIMITERS.test()` behaves inconsistently across calls, confirm the regex in `normalize-terms.ts` has no `g` flag — a global regex is stateful across `test()` calls. It must be `/[,\n\r\t]+/` with no flags.
 
