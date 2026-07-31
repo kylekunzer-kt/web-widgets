@@ -1,22 +1,3 @@
-// `mendix/filters/builders` ships types only (no runtime JS). The shared Jest config maps
-// it to a dumb jest.fn() stub that returns undefined, which can't build a real condition
-// tree to walk. This inline factory mirrors the pattern used in
-// tree-node-web's TreeNodeV2.spec.tsx: a per-file mock that returns real, walkable objects
-// shaped like the actual mendix/filters union (type/name/arg1/arg2/args).
-jest.mock("mendix/filters/builders", () => ({
-    attribute: (attributeId: unknown) => ({ type: "attribute", attributeId }),
-    literal: (value: unknown) => ({
-        type: "literal",
-        value,
-        valueType: typeof value === "string" ? "string" : typeof value === "boolean" ? "boolean" : "undefined"
-    }),
-    contains: (arg1: unknown, arg2: unknown) => ({ type: "function", name: "contains", arg1, arg2 }),
-    equals: (arg1: unknown, arg2: unknown) => ({ type: "function", name: "=", arg1, arg2 }),
-    startsWith: (arg1: unknown, arg2: unknown) => ({ type: "function", name: "starts-with", arg1, arg2 }),
-    greaterThan: (arg1: unknown, arg2: unknown) => ({ type: "function", name: ">", arg1, arg2 }),
-    or: (...args: unknown[]) => ({ type: "function", name: "or", args })
-}));
-
 import { attribute, contains, equals, greaterThan, literal, or, startsWith } from "mendix/filters/builders";
 import { termsFromCond } from "../terms-from-cond";
 
