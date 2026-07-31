@@ -3,7 +3,7 @@ import "@testing-library/jest-dom";
 import { FilterAPI } from "@mendix/widget-plugin-filtering/context";
 import { CustomFilterHost } from "@mendix/widget-plugin-filtering/stores/generic/CustomFilterHost";
 import { attrId, dynamic, EditableValueBuilder, ListAttributeValueBuilder } from "@mendix/widget-plugin-test-utils";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AttributeMetaData } from "mendix";
 import { createContext } from "react";
@@ -79,6 +79,46 @@ describe("DatagridMultiTextFilter", () => {
         expect((cond as any).args).toHaveLength(3);
     });
 
+    it("splits a tab-separated paste into chips and produces an or condition", async () => {
+        const user = userEvent.setup();
+        render(<DatagridMultiTextFilter {...commonProps()} />);
+
+        await user.click(screen.getByRole("textbox"));
+        await user.paste("a\tb\tc");
+
+        expect(screen.getAllByRole("listitem")).toHaveLength(3);
+
+        const cond = filterHost.condWithMeta.cond;
+        expect(cond).toBeDefined();
+        expect(cond!.name).toBe("or");
+        expect((cond as any).args).toHaveLength(3);
+    });
+
+    it("picks up a changed match mode without remounting", async () => {
+        const user = userEvent.setup();
+        const { rerender } = render(<DatagridMultiTextFilter {...commonProps()} />);
+
+        await user.click(screen.getByRole("textbox"));
+        await user.paste("a,");
+        expect(filterHost.condWithMeta.cond!.name).toBe("contains");
+
+        rerender(<DatagridMultiTextFilter {...commonProps({ matchMode: "equal" })} />);
+
+        expect(filterHost.condWithMeta.cond!.name).toBe("=");
+    });
+
+    it("applies a debounced live term end to end", async () => {
+        const user = userEvent.setup();
+        render(<DatagridMultiTextFilter {...commonProps({ delay: 0 })} />);
+
+        const input = screen.getByRole("textbox");
+        await user.click(input);
+        await user.type(input, "abc");
+
+        await waitFor(() => expect(filterHost.condWithMeta.cond).toBeDefined());
+        expect(filterHost.condWithMeta.cond!.name).toBe("contains");
+    });
+
     it("removes a chip and shrinks the condition", async () => {
         const user = userEvent.setup();
         render(<DatagridMultiTextFilter {...commonProps()} />);
@@ -114,6 +154,18 @@ describe("DatagridMultiTextFilter", () => {
         expect(screen.getByRole("alert")).toHaveTextContent(/2 of 4/);
     });
 
+    it("counts a cap-suppressed live term in the overflow warning", async () => {
+        const user = userEvent.setup();
+        render(<DatagridMultiTextFilter {...commonProps({ maxTerms: 2, delay: 0 })} />);
+
+        const input = screen.getByRole("textbox");
+        await user.click(input);
+        await user.paste("a,b");
+        await user.type(input, "c");
+
+        await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/2 of 3/));
+    });
+
     it("announces the applied term count", async () => {
         const user = userEvent.setup();
         render(<DatagridMultiTextFilter {...commonProps()} />);
@@ -137,6 +189,7 @@ describe("DatagridMultiTextFilter", () => {
     it("shows an error when the attribute is not filterable", () => {
         render(<DatagridMultiTextFilter {...commonProps({ attributes: [{ attribute: attr("a", false) }] })} />);
         expect(screen.getByText(/not filterable/i)).toBeInTheDocument();
+        expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     });
 
     it("shows an error when placed outside a grid", () => {
@@ -161,7 +214,8 @@ describe("DatagridMultiTextFilter", () => {
     });
 
     it("does not render while the default value is still loading", () => {
-        render(<DatagridMultiTextFilter {...commonProps({ defaultValue: dynamic.loading() })} />);
+        const { container } = render(<DatagridMultiTextFilter {...commonProps({ defaultValue: dynamic.loading() })} />);
         expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+        expect(container).toBeEmptyDOMElement();
     });
 });

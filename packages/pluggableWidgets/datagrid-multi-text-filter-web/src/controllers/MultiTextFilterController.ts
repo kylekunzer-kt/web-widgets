@@ -29,6 +29,7 @@ export class MultiTextFilterController {
             terms: computed,
             appliedCount: computed,
             droppedCount: computed,
+            liveTermSuppressed: computed,
             showOverflowWarning: computed,
             handleInputChange: action,
             handleCommit: action,
@@ -50,6 +51,10 @@ export class MultiTextFilterController {
 
     get droppedCount(): number {
         return this.filter.droppedCount;
+    }
+
+    get liveTermSuppressed(): boolean {
+        return this.filter.liveTermSuppressed;
     }
 
     get showOverflowWarning(): boolean {
