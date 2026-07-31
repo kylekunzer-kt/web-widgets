@@ -199,6 +199,21 @@ describe("MultiTextFilterController", () => {
         dispose();
     });
 
+    it("defaults the change delay to 500ms when not configured", () => {
+        const store = makeStore();
+        const controller = new MultiTextFilterController({ filter: store });
+        const dispose = controller.setup();
+
+        controller.handleInputChange("abc");
+        jest.advanceTimersByTime(499);
+        expect(store.liveTerm).toBe("");
+
+        jest.advanceTimersByTime(1);
+        expect(store.liveTerm).toBe("abc");
+
+        dispose();
+    });
+
     it("stops pushing live terms after disposal", () => {
         const store = makeStore();
         const { controller, dispose } = makeController(store);
