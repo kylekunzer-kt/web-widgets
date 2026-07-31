@@ -24,6 +24,8 @@
 - Prettier and eslint run automatically on file edit via Claude Code hooks. Do **not** run `prettier --write` or `pnpm run lint` manually.
 - Do not override core Atlas UI classes. Widget CSS classes are prefixed `widget-multi-text-filter`.
 - Terms can never contain a delimiter character (`,`, newline, tab, `\r`) — typing or pasting one splits the term. This invariant is what makes the comma-joined `valueAttribute` round-trip and repeated re-normalization safe. Preserve it.
+- **`mendix/filters/builders` has no runtime JS** — it ships only `builders.d.ts`. The shared `@mendix/pluggable-widgets-tools` Jest config maps the specifier to `__mocks__/FilterBuilders.js`, which is bare `jest.fn()` stubs returning `undefined`. The repo's canonical mock at `@mendix/widget-plugin-test-utils/__mocks__/mendix/filters/builders.js` is real but exports only `literal`, `attribute`, `equals`, `notEqual`, `or`, `and` and `day*` variants — **not `contains` or `startsWith`**, which this widget requires. Task 3 therefore installs a package-local mock wired through a `moduleNameMapper` override. **Consequence for every later task: import from `mendix/filters/builders` normally in specs and never write a `jest.mock("mendix/filters/builders", ...)` call.**
+- Test fixtures must cast attribute ids: `attribute("attr_a" as any)`. `ListAttributeId` is a branded type (`string & { __attributeIdTag: never }`), so a bare string does not compile. This cast belongs in test fixtures only — never in implementation code. Precedent: `packages/shared/filter-commons/src/__tests__/condition-utils.spec.ts`.
 
 ---
 
@@ -31,35 +33,35 @@
 
 **New package** `packages/pluggableWidgets/datagrid-multi-text-filter-web/`:
 
-| File | Responsibility |
-| --- | --- |
+| File                                                                                                              | Responsibility                                      |
+| ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
 | `package.json`, `tsconfig.json`, `jest.config.js`, `eslint.config.mjs`, `.prettierrc.js`, `playwright.config.cjs` | Scaffolding, copied from `datagrid-text-filter-web` |
-| `src/package.xml` | Mendix client module manifest |
-| `src/DatagridMultiTextFilter.xml` | Widget property definitions |
-| `src/DatagridMultiTextFilter.tsx` | Default export; HOC composition |
-| `src/DatagridMultiTextFilter.editorConfig.ts` | Studio Pro property visibility + structure preview |
-| `src/DatagridMultiTextFilter.editorPreview.tsx` | Studio Pro design-mode render |
-| `src/utils/normalize-terms.ts` | Pure: split, trim, dedupe, cap |
-| `src/utils/terms-from-cond.ts` | Pure: parse an `or()` tree back into terms |
-| `src/utils/widget-utils.ts` | `isLoadingDefaultValues` preloader predicate |
-| `src/stores/MultiStringFilterStore.ts` | Filter state + condition + persistence |
-| `src/stores/MultiStringStoreProvider.ts` | Registers the store with `filterObserver` |
-| `src/hocs/withMultiStringStore.tsx` | Constructs the provider, injects the store |
-| `src/controllers/MultiTextFilterController.ts` | Input text, debounce, JS-action handlers |
-| `src/hooks/useTermsSync.ts` | Pushes terms to `valueAttribute`, fires `onChange` |
-| `src/components/TermChipInput.tsx` | Presentational chip input |
-| `src/components/MultiTextFilterContainer.tsx` | Wires controller + store + component |
-| `src/components/typings.ts` | Shared prop types |
-| `e2e/DatagridMultiTextFilter.spec.js` | Playwright E2E |
-| `README.md`, `CHANGELOG.md` | Docs |
+| `src/package.xml`                                                                                                 | Mendix client module manifest                       |
+| `src/DatagridMultiTextFilter.xml`                                                                                 | Widget property definitions                         |
+| `src/DatagridMultiTextFilter.tsx`                                                                                 | Default export; HOC composition                     |
+| `src/DatagridMultiTextFilter.editorConfig.ts`                                                                     | Studio Pro property visibility + structure preview  |
+| `src/DatagridMultiTextFilter.editorPreview.tsx`                                                                   | Studio Pro design-mode render                       |
+| `src/utils/normalize-terms.ts`                                                                                    | Pure: split, trim, dedupe, cap                      |
+| `src/utils/terms-from-cond.ts`                                                                                    | Pure: parse an `or()` tree back into terms          |
+| `src/utils/widget-utils.ts`                                                                                       | `isLoadingDefaultValues` preloader predicate        |
+| `src/stores/MultiStringFilterStore.ts`                                                                            | Filter state + condition + persistence              |
+| `src/stores/MultiStringStoreProvider.ts`                                                                          | Registers the store with `filterObserver`           |
+| `src/hocs/withMultiStringStore.tsx`                                                                               | Constructs the provider, injects the store          |
+| `src/controllers/MultiTextFilterController.ts`                                                                    | Input text, debounce, JS-action handlers            |
+| `src/hooks/useTermsSync.ts`                                                                                       | Pushes terms to `valueAttribute`, fires `onChange`  |
+| `src/components/TermChipInput.tsx`                                                                                | Presentational chip input                           |
+| `src/components/MultiTextFilterContainer.tsx`                                                                     | Wires controller + store + component                |
+| `src/components/typings.ts`                                                                                       | Shared prop types                                   |
+| `e2e/DatagridMultiTextFilter.spec.js`                                                                             | Playwright E2E                                      |
+| `README.md`, `CHANGELOG.md`                                                                                       | Docs                                                |
 
 **Modified** (Data Widgets module registration):
 
-| File | Change |
-| --- | --- |
-| `packages/modules/data-widgets/package.json` | Add to `mxpackage.dependencies` and `dependencies` |
-| `packages/modules/data-widgets/src/themesource/datawidgets/web/main.scss` | One `@import` |
-| `packages/modules/data-widgets/src/themesource/datawidgets/web/_datagrid-multi-text-filter.scss` | New partial |
+| File                                                                                             | Change                                             |
+| ------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
+| `packages/modules/data-widgets/package.json`                                                     | Add to `mxpackage.dependencies` and `dependencies` |
+| `packages/modules/data-widgets/src/themesource/datawidgets/web/main.scss`                        | One `@import`                                      |
+| `packages/modules/data-widgets/src/themesource/datawidgets/web/_datagrid-multi-text-filter.scss` | New partial                                        |
 
 ---
 
@@ -68,6 +70,7 @@
 Produces a package that builds, lints, and generates its typings. No widget logic yet.
 
 **Files:**
+
 - Create: `packages/pluggableWidgets/datagrid-multi-text-filter-web/package.json`
 - Create: `packages/pluggableWidgets/datagrid-multi-text-filter-web/tsconfig.json`
 - Create: `packages/pluggableWidgets/datagrid-multi-text-filter-web/jest.config.js`
@@ -80,6 +83,7 @@ Produces a package that builds, lints, and generates its typings. No widget logi
 - Generated: `packages/pluggableWidgets/datagrid-multi-text-filter-web/typings/DatagridMultiTextFilterProps.d.ts`
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces: the generated types `DatagridMultiTextFilterContainerProps` and `DatagridMultiTextFilterPreviewProps`, plus the exported enum type `MatchModeEnum = "contains" | "equal" | "startsWith"`. Every later task imports from `../../typings/DatagridMultiTextFilterProps`.
 
@@ -215,7 +219,14 @@ module.exports = {
 
 ```xml
 <?xml version="1.0" encoding="utf-8" ?>
-<widget id="com.mendix.widget.web.datagridmultitextfilter.DatagridMultiTextFilter" pluginWidget="true" offlineCapable="true" xmlns="http://www.mendix.com/widget/1.0/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mendix.com/widget/1.0/ ../../../../node_modules/mendix/custom_widget.xsd">
+<widget
+    id="com.mendix.widget.web.datagridmultitextfilter.DatagridMultiTextFilter"
+    pluginWidget="true"
+    offlineCapable="true"
+    xmlns="http://www.mendix.com/widget/1.0/"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.mendix.com/widget/1.0/ ../../../../node_modules/mendix/custom_widget.xsd"
+>
     <name>Multi text filter</name>
     <description>Filter rows by multiple search terms at once.</description>
     <studioProCategory>Data controls</studioProCategory>
@@ -229,10 +240,17 @@ module.exports = {
                 </property>
                 <property key="attributes" type="object" isList="true" required="true">
                     <caption>Attributes</caption>
-                    <description>Select the attributes to search. A row matches when any term matches any of these attributes.</description>
+                    <description
+                    >Select the attributes to search. A row matches when any term matches any of these attributes.</description>
                     <properties>
                         <propertyGroup caption="General">
-                            <property key="attribute" type="attribute" dataSource="../linkedDs" isMetaData="true" required="true">
+                            <property
+                                key="attribute"
+                                type="attribute"
+                                dataSource="../linkedDs"
+                                isMetaData="true"
+                                required="true"
+                            >
                                 <caption>Attribute</caption>
                                 <description />
                                 <attributeTypes>
@@ -253,7 +271,8 @@ module.exports = {
                 </property>
                 <property key="maxTerms" type="integer" defaultValue="100">
                     <caption>Maximum terms</caption>
-                    <description>Upper bound on the number of search terms. Each term adds one condition per selected attribute, so high values slow down large datasources.</description>
+                    <description
+                    >Upper bound on the number of search terms. Each term adds one condition per selected attribute, so high values slow down large datasources.</description>
                 </property>
                 <property key="defaultValue" type="expression" required="false">
                     <caption>Default value</caption>
@@ -274,7 +293,8 @@ module.exports = {
             <propertyGroup caption="Configurations">
                 <property key="valueAttribute" type="attribute" required="false">
                     <caption>Saved attribute</caption>
-                    <description>Attribute used to store the last value of the filter, as a comma-separated list.</description>
+                    <description
+                    >Attribute used to store the last value of the filter, as a comma-separated list.</description>
                     <attributeTypes>
                         <attributeType name="String" />
                         <attributeType name="HashString" />
@@ -363,10 +383,12 @@ git commit -m "feat(datagrid-multi-text-filter): scaffold widget package"
 The single place term parsing rules live. Pure function, no MobX, no React.
 
 **Files:**
+
 - Create: `src/utils/normalize-terms.ts`
 - Test: `src/utils/__tests__/normalize-terms.spec.ts`
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces: `normalizeTerms(input: string | string[], maxTerms: number): { terms: string[]; dropped: number }` and `TERM_DELIMITERS: RegExp`.
 
@@ -507,12 +529,80 @@ git commit -m "feat(datagrid-multi-text-filter): add term normalization"
 Parses a persisted filter condition back into terms. This exists because shared `selectedFromCond` only recognizes `=` and `contains` — it silently returns `[]` for a `starts-with` tree, which would drop the user's filter on page navigation.
 
 **Files:**
+
+- Create: `src/__mocks__/filter-builders.js` (shared test infrastructure — see Step 0)
+- Modify: `jest.config.js` (add the `moduleNameMapper` override)
 - Create: `src/utils/terms-from-cond.ts`
 - Test: `src/utils/__tests__/terms-from-cond.spec.ts`
 
 **Interfaces:**
+
 - Consumes: nothing from earlier tasks.
-- Produces: `termsFromCond(cond: FilterCondition): string[]` — returns raw terms in tree order, **with duplicates**. Callers pass the result through `normalizeTerms` to dedupe (a condition built over N attributes repeats every term N times).
+- Produces:
+    - `termsFromCond(cond: FilterCondition): string[]` — returns raw terms in tree order, **with duplicates**. Callers pass the result through `normalizeTerms` to dedupe (a condition built over N attributes repeats every term N times).
+    - Working `mendix/filters/builders` in Jest for **every** spec in this package. Tasks 4, 6 and 8 rely on this and must not add their own `jest.mock` calls.
+
+- [ ] **Step 0: Install the package-local filter-builders mock**
+
+`mendix/filters/builders` has no runtime JS, and both available mocks are inadequate (see Global Constraints). Fix it once, here, for the whole package.
+
+Create `src/__mocks__/filter-builders.js`:
+
+```js
+// `mendix/filters/builders` ships types only — no runtime JS. The shared
+// pluggable-widgets-tools Jest config maps it to bare jest.fn() stubs that return
+// undefined, and the canonical mock in @mendix/widget-plugin-test-utils omits the
+// `contains` and `startsWith` builders this widget is built on. So: delegate to the
+// canonical mock for what it does provide, and add the string operators.
+//
+// Operator name strings must match the real mendix/filters union exactly — they are
+// what termsFromCond and the shared condition-utils helpers switch on.
+const canonical = require("@mendix/widget-plugin-test-utils/__mocks__/mendix/filters/builders.js");
+
+const binary = name => (arg1, arg2) => ({ type: "function", name, arg1, arg2 });
+
+module.exports = {
+    ...canonical,
+    contains: binary("contains"),
+    startsWith: binary("starts-with"),
+    endsWith: binary("ends-with"),
+    greaterThan: binary(">"),
+    greaterThanOrEqual: binary(">="),
+    lessThan: binary("<"),
+    lessThanOrEqual: binary("<=")
+};
+```
+
+Then in `jest.config.js`, override `moduleNameMapper`. **Spread the shared mapper first** — replacing it wholesale would drop the `css`/`png`/`WebIcon`/`hot` mappings the toolchain needs:
+
+```js
+const sharedConfig = require("@mendix/pluggable-widgets-tools/test-config/jest.config");
+
+module.exports = {
+    ...sharedConfig,
+    /** Prevent usage of "jest-react-hooks-shallow" as it breaks useResetEvent hook. */
+    setupFilesAfterEnv: undefined,
+    /**
+     * `nanoevents` package is ESM module and because ESM is not supported by Jest yet
+     * we mark `nanoevents` as a module that should be transformed by ts-jest.
+     */
+    transformIgnorePatterns: ["node_modules/(?!nanoevents)/"],
+    /**
+     * The shared config maps `mendix/filters/builders` to stubs that return undefined.
+     * Point it at our local mock instead so specs can build real condition trees.
+     * rootDir is `<package>/src`, so this resolves to src/__mocks__/filter-builders.js.
+     */
+    moduleNameMapper: {
+        ...sharedConfig.moduleNameMapper,
+        "mendix/filters/builders": "<rootDir>/__mocks__/filter-builders.js"
+    }
+};
+```
+
+Verify the mapper is live before writing any test logic:
+
+Run: `cd packages/pluggableWidgets/datagrid-multi-text-filter-web && pnpm test normalize-terms`
+Expected: still 12/12 passing — Task 2's tests don't use builders, so this confirms the config change broke nothing.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -522,8 +612,10 @@ Create `src/utils/__tests__/terms-from-cond.spec.ts`:
 import { attribute, contains, equals, greaterThan, literal, or, startsWith } from "mendix/filters/builders";
 import { termsFromCond } from "../terms-from-cond";
 
-const attrA = attribute("attr_a");
-const attrB = attribute("attr_b");
+// `as any`: ListAttributeId is a branded type, so a bare string does not compile.
+// Test fixtures only — never in implementation code.
+const attrA = attribute("attr_a" as any);
+const attrB = attribute("attr_b" as any);
 
 describe("termsFromCond", () => {
     it("reads a single bare contains condition", () => {
@@ -654,7 +746,8 @@ if (arg2.valueType === "string") {
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/pluggableWidgets/datagrid-multi-text-filter-web/src/utils
+git add packages/pluggableWidgets/datagrid-multi-text-filter-web/src \
+        packages/pluggableWidgets/datagrid-multi-text-filter-web/jest.config.js
 git commit -m "feat(datagrid-multi-text-filter): parse terms from filter condition"
 ```
 
@@ -665,10 +758,12 @@ git commit -m "feat(datagrid-multi-text-filter): parse terms from filter conditi
 The heart of the widget. Holds terms, builds the condition, and handles all three persistence channels.
 
 **Files:**
+
 - Create: `src/stores/MultiStringFilterStore.ts`
 - Test: `src/stores/__tests__/MultiStringFilterStore.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `normalizeTerms` (Task 2), `termsFromCond` (Task 3), `MatchModeEnum` from the generated typings (Task 1).
 - Produces:
 
@@ -1291,17 +1386,19 @@ git commit -m "feat(datagrid-multi-text-filter): add multi string filter store"
 Registers the store with the grid so its condition reaches `ListValue.setFilter()`.
 
 **Files:**
+
 - Create: `src/stores/MultiStringStoreProvider.ts`
 - Create: `src/hocs/withMultiStringStore.tsx`
 - Create: `src/components/typings.ts`
 - Test: `src/stores/__tests__/MultiStringStoreProvider.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `MultiStringFilterStore`, `MultiStringFilterStoreSpec` (Task 4).
 - Produces:
-  - `MultiStringStoreProvider` with `readonly dataKey: string`, `get store(): MultiStringFilterStore`, and an inherited `setup(): () => void`.
-  - `withMultiStringStore<P extends RequiredProps>(Component: FC<P & MultiStringFilterProps>): FC<P & { filterAPI: FilterAPI }>`.
-  - `interface MultiStringFilterProps { filterStore: MultiStringFilterStore; parentChannelName?: string }` exported from `src/components/typings.ts`.
+    - `MultiStringStoreProvider` with `readonly dataKey: string`, `get store(): MultiStringFilterStore`, and an inherited `setup(): () => void`.
+    - `withMultiStringStore<P extends RequiredProps>(Component: FC<P & MultiStringFilterProps>): FC<P & { filterAPI: FilterAPI }>`.
+    - `interface MultiStringFilterProps { filterStore: MultiStringFilterStore; parentChannelName?: string }` exported from `src/components/typings.ts`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1475,10 +1572,12 @@ git commit -m "feat(datagrid-multi-text-filter): register filter store with grid
 Presentational only. All state lives in the caller.
 
 **Files:**
+
 - Create: `src/components/TermChipInput.tsx`
 - Test: `src/components/__tests__/TermChipInput.spec.tsx`
 
 **Interfaces:**
+
 - Consumes: nothing from earlier tasks.
 - Produces: `TermChipInput` and `TermChipInputProps`:
 
@@ -1822,11 +1921,13 @@ git commit -m "feat(datagrid-multi-text-filter): add term chip input component"
 Owns the input text, debounces it into the store, and handles the Mendix filter JS actions.
 
 **Files:**
+
 - Create: `src/controllers/MultiTextFilterController.ts`
 - Create: `src/hooks/useTermsSync.ts`
 - Test: `src/controllers/__tests__/MultiTextFilterController.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `MultiStringFilterStore` (Task 4).
 - Produces:
 
@@ -1834,7 +1935,7 @@ Owns the input text, debounces it into the store, and handles the Mendix filter 
 class MultiTextFilterController {
     constructor(params: {
         filter: MultiStringFilterStore;
-        changeDelay?: number;   // default 500
+        changeDelay?: number; // default 500
         defaultValue?: string;
     });
     inputValue: string;
@@ -2281,12 +2382,14 @@ git commit -m "feat(datagrid-multi-text-filter): add controller and value sync"
 Wires everything together. After this task the widget works end to end.
 
 **Files:**
+
 - Create: `src/components/MultiTextFilterContainer.tsx`
 - Create: `src/utils/widget-utils.ts`
 - Modify: `src/DatagridMultiTextFilter.tsx` (replace the Task 1 stub)
 - Test: `src/components/__tests__/DatagridMultiTextFilter.spec.tsx`
 
 **Interfaces:**
+
 - Consumes: `MultiStringFilterProps` (Task 5), `withMultiStringStore` (Task 5), `TermChipInput` (Task 6), `MultiTextFilterController` and `useTermsSync` (Task 7).
 - Produces: default export `DatagridMultiTextFilter`, and `isLoadingDefaultValues(props: { defaultValue?: DynamicValue<string> }): boolean`.
 
@@ -2450,9 +2553,7 @@ describe("DatagridMultiTextFilter", () => {
         const user = userEvent.setup();
         const setValue = jest.fn();
         render(
-            <DatagridMultiTextFilter
-                {...commonProps({ valueAttribute: { setValue, status: "available" } as any })}
-            />
+            <DatagridMultiTextFilter {...commonProps({ valueAttribute: { setValue, status: "available" } as any })} />
         );
 
         await user.click(screen.getByRole("textbox"));
@@ -2629,11 +2730,13 @@ git commit -m "feat(datagrid-multi-text-filter): wire up filter container and en
 Makes the widget behave properly in the Studio Pro page editor.
 
 **Files:**
+
 - Create: `src/DatagridMultiTextFilter.editorConfig.ts`
 - Create: `src/DatagridMultiTextFilter.editorPreview.tsx`
 - Create: `src/DatagridMultiTextFilter.icon.png`, `src/DatagridMultiTextFilter.icon.dark.png`, `src/DatagridMultiTextFilter.tile.png`, `src/DatagridMultiTextFilter.tile.dark.png`
 
 **Interfaces:**
+
 - Consumes: `DatagridMultiTextFilterPreviewProps` from the generated typings (Task 1).
 - Produces: `getProperties`, `getPreview`, and `preview` exports consumed by Studio Pro, not by other tasks.
 
@@ -2674,19 +2777,13 @@ import {
 } from "@mendix/widget-plugin-platform/preview/structure-preview-api";
 import { DatagridMultiTextFilterPreviewProps, MatchModeEnum } from "../typings/DatagridMultiTextFilterProps";
 
-export function getProperties(
-    _values: DatagridMultiTextFilterPreviewProps,
-    defaultProperties: Properties
-): Properties {
+export function getProperties(_values: DatagridMultiTextFilterPreviewProps, defaultProperties: Properties): Properties {
     hidePropertyIn(defaultProperties, {} as { linkedDs: unknown }, "linkedDs");
 
     return defaultProperties;
 }
 
-export const getPreview = (
-    values: DatagridMultiTextFilterPreviewProps,
-    isDarkMode: boolean
-): StructurePreviewProps => {
+export const getPreview = (values: DatagridMultiTextFilterPreviewProps, isDarkMode: boolean): StructurePreviewProps => {
     const palette = structurePreviewPalette[isDarkMode ? "dark" : "light"];
 
     return {
@@ -2819,11 +2916,13 @@ git commit -m "feat(datagrid-multi-text-filter): add Studio Pro editor config an
 ## Task 10: Styling and Data Widgets module registration
 
 **Files:**
+
 - Create: `packages/modules/data-widgets/src/themesource/datawidgets/web/_datagrid-multi-text-filter.scss`
 - Modify: `packages/modules/data-widgets/src/themesource/datawidgets/web/main.scss`
 - Modify: `packages/modules/data-widgets/package.json`
 
 **Interfaces:**
+
 - Consumes: the CSS class names emitted by `TermChipInput` (Task 6): `widget-multi-text-filter`, `-input-container`, `-terms`, `-selected-item`, `-term-text`, `-remove-icon`, `-input`, `-clear`, `-clear-icon`, plus `widget-multi-text-filter-wrapper` and `-status` from the container (Task 8).
 - Produces: nothing consumed by later tasks.
 
@@ -2984,12 +3083,14 @@ git commit -m "feat(data-widgets): add multi text filter widget to module"
 ## Task 11: E2E test, README, and changelog
 
 **Files:**
+
 - Create: `packages/pluggableWidgets/datagrid-multi-text-filter-web/e2e/DatagridMultiTextFilter.spec.js`
 - Create: `packages/pluggableWidgets/datagrid-multi-text-filter-web/README.md`
 - Create: `packages/pluggableWidgets/datagrid-multi-text-filter-web/CHANGELOG.md`
 - Modify: `packages/modules/data-widgets/CHANGELOG.md`
 
 **Interfaces:**
+
 - Consumes: the rendered widget from Task 8 and the module build from Task 10.
 - Produces: nothing.
 
