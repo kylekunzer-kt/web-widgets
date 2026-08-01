@@ -1,7 +1,7 @@
 diff --git a/bin/mx-scripts.js b/bin/mx-scripts.js
-index 708bf48f266b6f80d830a9a72388278a65695964..6187cbe0739454c92f72136595e16748372885e9 100755
+index 708bf48f266b6f80d830a9a72388278a65695964..6187cbe0739454c92f72136595e16748372885e9 100644
 --- a/bin/mx-scripts.js
-+++ b/bin/mx-scripts.js
++++ b/bin/mx-scripts.js	
 @@ -8,10 +8,10 @@ const { red, blue, bold, whiteBright } = require("ansi-colors");
  const semver = require("semver");
  const { auditPluggableWidgetsTools } = require("../dist/commands/audit");
@@ -15,10 +15,25 @@ index 708bf48f266b6f80d830a9a72388278a65695964..6187cbe0739454c92f72136595e16748
      } catch (e) {
          console.log(red("An error occurred while checking migration dependencies: ", e));
      }
+diff --git a/configs/helpers/rollup-helper.mjs b/configs/helpers/rollup-helper.mjs
+index e35941c1b15c1edf216b6719e91e0137af7fb021..7498edc6db697d53ba5924df78da0695fdfda7ad 100644
+--- a/configs/helpers/rollup-helper.mjs
++++ b/configs/helpers/rollup-helper.mjs	
+@@ -25,7 +25,9 @@ export async function createMpkFile({ mpkDir, mpkFile, widgetTmpDir, isProductio
+         mkdirSync(widgetsPath, { recursive: true });
+         mkdirSync(absolutePath, { recursive: true });
+         // Copy files to deployment and widgets folder
+-        cp("-r", join(widgetTmpDir, "*"), absolutePath);
++        // Forward slashes required on Windows — see the note in configs/rollup.config.mjs.
++        // Without this, deploying into MX_PROJECT_PATH (pnpm start live reload) silently copies nothing.
++        cp("-r", join(widgetTmpDir, "*").replace(/\\/g, "/"), absolutePath);
+         cp(mpkFile, widgetsPath);
+     }
+ }
 diff --git a/configs/rollup.config.mjs b/configs/rollup.config.mjs
-index 4998ce2d2bedd449b0fdaa400368df116e1d4f46..d8e70107c4cde83908324b69b1031ad9c8db12f9 100644
+index 4998ce2d2bedd449b0fdaa400368df116e1d4f46..cfac657cee59c94c470249e805bc4db48482370e 100644
 --- a/configs/rollup.config.mjs
-+++ b/configs/rollup.config.mjs
++++ b/configs/rollup.config.mjs	
 @@ -128,7 +128,7 @@ export default async args => {
                      extensions,
                      transpile: production,
@@ -37,3 +52,19 @@ index 4998ce2d2bedd449b0fdaa400368df116e1d4f46..d8e70107c4cde83908324b69b1031ad9
                      external: commonExternalLibs
                  })
              ],
+@@ -320,9 +320,13 @@ export default async args => {
+             clear({ targets: [outDir, mpkDir] }),
+             command([
+                 () => {
+-                    cp(join(sourcePath, "src/**/*.xml"), outDir);
++                    // Forward slashes are required: path.join emits "\" on Windows, and shelljs
++                    // 0.10's fast-glob backend treats "\" as an escape character rather than a
++                    // path separator, so the pattern matches nothing and the widget XML/icons
++                    // never reach the .mpk. Same idiom as line 93 above.
++                    cp(join(sourcePath, "src/**/*.xml").replace(/\\/g, "/"), outDir);
+                     if (existsSync(`src/${widgetName}.icon.png`) || existsSync(`src/${widgetName}.tile.png`)) {
+-                        cp(join(sourcePath, `src/${widgetName}.@(tile|icon)?(.dark).png`), outDir);
++                        cp(join(sourcePath, `src/${widgetName}.@(tile|icon)?(.dark).png`).replace(/\\/g, "/"), outDir);
+                     }
+                 }
+             ]),

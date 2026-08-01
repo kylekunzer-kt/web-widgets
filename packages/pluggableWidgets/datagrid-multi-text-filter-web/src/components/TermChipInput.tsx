@@ -107,25 +107,13 @@ export function TermChipInput(props: TermChipInputProps): ReactElement {
     return (
         <div className={classNames(cls.root, props.className)} style={props.style} id={props.id}>
             <div className={cls.inputContainer}>
-                {terms.length > 0 && (
-                    <ul className={`${cls.root}-terms`} role="list">
-                        {terms.map(term => (
-                            <li className={cls.selectedItem} role="listitem" key={term}>
-                                <span className={`${cls.root}-term-text`}>{term}</span>
-                                <button
-                                    type="button"
-                                    className={cls.removeIcon}
-                                    aria-label={`${removeTermCaption} ${term}`}
-                                    onClick={() => onRemove(term)}
-                                >
-                                    <Cross />
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                )}
+                {/*
+                 * `form-control` is Atlas's input class, the same one the built-in Text filter
+                 * uses (see InputWithFilters). Wearing it gives this input identical height,
+                 * border, radius and focus ring, and keeps it correct under custom themes.
+                 */}
                 <input
-                    className={cls.input}
+                    className={classNames("form-control", cls.input)}
                     type="text"
                     ref={props.inputRef}
                     value={inputValue}
@@ -137,17 +125,38 @@ export function TermChipInput(props: TermChipInputProps): ReactElement {
                     onKeyDown={handleKeyDown}
                     onBlur={handleBlur}
                 />
+                {/*
+                 * `ClearButton` from the dropdown filter plugin is not reused here because its
+                 * `aria-label` is hardcoded to "Clear selection". The `Cross` icon and
+                 * `classes()` helper are reused, which is what keeps the visual language
+                 * consistent.
+                 */}
+                {showClear && (
+                    <button type="button" className={cls.clear} aria-label="Clear all terms" onClick={onClear}>
+                        <Cross className={cls.clearIcon} />
+                    </button>
+                )}
             </div>
             {/*
-             * `ClearButton` from the dropdown filter plugin is not reused here because its
-             * `aria-label` is hardcoded to "Clear selection". The `Cross` icon and
-             * `classes()` helper are reused, which is what keeps the visual language
-             * consistent.
+             * Chips render below the input rather than inside it, so the input keeps a stable
+             * height and the terms are free to wrap across as many rows as they need.
              */}
-            {showClear && (
-                <button type="button" className={cls.clear} aria-label="Clear all terms" onClick={onClear}>
-                    <Cross className={cls.clearIcon} />
-                </button>
+            {terms.length > 0 && (
+                <ul className={`${cls.root}-terms`} role="list">
+                    {terms.map(term => (
+                        <li className={cls.selectedItem} role="listitem" key={term}>
+                            <span className={`${cls.root}-term-text`}>{term}</span>
+                            <button
+                                type="button"
+                                className={cls.removeIcon}
+                                aria-label={`${removeTermCaption} ${term}`}
+                                onClick={() => onRemove(term)}
+                            >
+                                <Cross />
+                            </button>
+                        </li>
+                    ))}
+                </ul>
             )}
         </div>
     );
