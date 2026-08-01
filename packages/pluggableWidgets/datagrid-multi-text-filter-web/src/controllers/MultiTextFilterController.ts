@@ -2,6 +2,7 @@ import { disposeBatch } from "@mendix/widget-plugin-mobx-kit/main";
 import { debounce } from "@mendix/widget-plugin-platform/utils/debounce";
 import { action, computed, makeObservable, observable, reaction, runInAction } from "mobx";
 import { createRef, RefObject } from "react";
+import { MatchModeEnum } from "../../typings/DatagridMultiTextFilterProps";
 import { MultiStringFilterStore } from "../stores/MultiStringFilterStore";
 
 export interface MultiTextFilterControllerParams {
@@ -31,6 +32,8 @@ export class MultiTextFilterController {
             droppedCount: computed,
             liveTermSuppressed: computed,
             showOverflowWarning: computed,
+            matchMode: computed,
+            handleMatchModeChange: action,
             handleInputChange: action,
             handleCommit: action,
             handleRemove: action,
@@ -52,6 +55,19 @@ export class MultiTextFilterController {
     get droppedCount(): number {
         return this.filter.droppedCount;
     }
+
+    /** The match mode the filter selector should show as selected. */
+    get matchMode(): MatchModeEnum {
+        return this.filter.matchMode;
+    }
+
+    /**
+     * Applied immediately rather than debounced: picking a constraint is a deliberate,
+     * discrete action, and the grid should refilter the moment it changes.
+     */
+    handleMatchModeChange = (mode: MatchModeEnum): void => {
+        this.filter.setMatchMode(mode);
+    };
 
     get liveTermSuppressed(): boolean {
         return this.filter.liveTermSuppressed;

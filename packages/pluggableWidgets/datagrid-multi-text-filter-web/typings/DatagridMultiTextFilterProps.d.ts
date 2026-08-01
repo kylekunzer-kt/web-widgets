@@ -23,12 +23,14 @@ export interface DatagridMultiTextFilterContainerProps {
     tabIndex?: number;
     attributes: AttributesType[];
     matchMode: MatchModeEnum;
+    adjustable: boolean;
     maxTerms: number;
     defaultValue?: DynamicValue<string>;
     placeholder?: DynamicValue<string>;
     delay: number;
     valueAttribute?: EditableValue<string>;
     onChange?: ActionValue;
+    screenReaderButtonCaption?: DynamicValue<string>;
     screenReaderInputCaption?: DynamicValue<string>;
     removeTermCaption?: DynamicValue<string>;
 }
@@ -46,12 +48,14 @@ export interface DatagridMultiTextFilterPreviewProps {
     translate: (text: string) => string;
     attributes: AttributesPreviewType[];
     matchMode: MatchModeEnum;
+    adjustable: boolean;
     maxTerms: number | null;
     defaultValue: string;
     placeholder: string;
     delay: number | null;
     valueAttribute: string;
     onChange: {} | null;
+    screenReaderButtonCaption: string;
     screenReaderInputCaption: string;
     removeTermCaption: string;
 }

@@ -1,33 +1,29 @@
+// Bundled with the widget rather than living in the Data Widgets module themesource, so a
+// standalone .mpk is styled on its own. The input row deliberately has almost no rules here:
+// it renders `filter-container`, `filter-selector` and `form-control filter-input`, the same
+// classes the built-in Text filter uses, so the theme supplies that chrome.
+
 $root: ".widget-multi-text-filter";
 
 .widget-multi-text-filter-wrapper {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-smallest, 2px);
     width: 100%;
 }
 
-// The widget is a column: the input row on top, the term chips wrapping below it.
-// The input itself wears Atlas's `form-control`, so its border, height, radius and
-// focus ring come from the theme and match the built-in Text filter exactly. Nothing
-// here re-declares those — only the clear button overlay and the chip list.
 #{$root} {
     display: flex;
     flex-direction: column;
     width: 100%;
 
+    // `filter-container` already lays the row out; this only reserves room at the inline
+    // end so long text never runs under the overlaid clear button.
     &-input-container {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
         position: relative;
-        width: 100%;
     }
 
-    // Leave room for the overlaid clear button so long text never runs under it.
     &-input {
         padding-inline-end: 28px;
-        width: 100%;
     }
 
     &-clear {
@@ -42,6 +38,7 @@ $root: ".widget-multi-text-filter";
         padding: 2px;
         position: absolute;
         transform: translateY(-50%);
+        z-index: 1;
 
         &:focus-visible {
             outline: 1px solid var(--brand-primary, #0595db);
@@ -54,13 +51,12 @@ $root: ".widget-multi-text-filter";
         flex-flow: row wrap;
         gap: var(--spacing-smallest, 4px);
         list-style: none;
-        margin: var(--spacing-smallest, 4px) 0 0;
+        margin: var(--spacing-smaller, 8px) 0 0;
         padding: 0;
         width: 100%;
     }
 
-    // Badge proportions match the dropdown filter's tag picker so the two widgets
-    // read as siblings.
+    // Badge proportions match the dropdown filter's tag picker so the widgets read as siblings.
     &-selected-item {
         align-items: center;
         background-color: var(--color-primary-lighter, #e5f5fd);

@@ -28,12 +28,16 @@
                 </property>
                 <property key="matchMode" type="enumeration" defaultValue="contains">
                     <caption>Match mode</caption>
-                    <description>How each individual term is matched against the attributes.</description>
+                    <description>How each individual term is matched against the attributes. When "Adjustable by user" is on, this is the mode the filter starts with.</description>
                     <enumerationValues>
                         <enumerationValue key="contains">Contains</enumerationValue>
                         <enumerationValue key="equal">Equal</enumerationValue>
                         <enumerationValue key="startsWith">Starts with</enumerationValue>
                     </enumerationValues>
+                </property>
+                <property key="adjustable" type="boolean" defaultValue="true">
+                    <caption>Adjustable by user</caption>
+                    <description>Show a button that lets the end user change the match mode.</description>
                 </property>
                 <property key="maxTerms" type="integer" defaultValue="100">
                     <caption>Maximum terms</caption>
@@ -74,6 +78,13 @@
         </propertyGroup>
         <propertyGroup caption="Accessibility">
             <propertyGroup caption="Screen reader">
+                <property key="screenReaderButtonCaption" type="textTemplate" required="false">
+                    <caption>Match mode button caption</caption>
+                    <description>Assistive technology will read this upon reaching the button that changes the match mode.</description>
+                    <translations>
+                        <translation lang="en_US">Match mode</translation>
+                    </translations>
+                </property>
                 <property key="screenReaderInputCaption" type="textTemplate" required="false">
                     <caption>Input caption</caption>
                     <description>Assistive technology will read this upon reaching the input element.</description>

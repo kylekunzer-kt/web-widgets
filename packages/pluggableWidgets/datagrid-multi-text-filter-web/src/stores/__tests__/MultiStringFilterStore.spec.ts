@@ -20,6 +20,57 @@ function makeStore(overrides: Partial<MultiStringFilterStoreSpec> = {}): MultiSt
 }
 
 describe("MultiStringFilterStore", () => {
+    describe("match mode", () => {
+        it("starts on the configured mode", () => {
+            expect(makeStore({ matchMode: "equal" }).matchMode).toBe("equal");
+        });
+
+        it("changes mode and rebuilds the condition when adjustable", () => {
+            const store = makeStore({ matchModeAdjustable: true });
+            store.setTerms("abc");
+            expect(store.condition!.name).toBe("contains");
+
+            store.setMatchMode("equal");
+
+            expect(store.matchMode).toBe("equal");
+            expect(store.condition!.name).toBe("=");
+        });
+
+        it("ignores a mode change when not adjustable", () => {
+            const store = makeStore({ matchMode: "contains", matchModeAdjustable: false });
+            store.setMatchMode("equal");
+            expect(store.matchMode).toBe("contains");
+        });
+
+        it("keeps the user's mode across a props update", () => {
+            const store = makeStore({ matchModeAdjustable: true });
+            store.setMatchMode("startsWith");
+
+            store.updateProps(spec({ matchMode: "contains", matchModeAdjustable: true }));
+
+            expect(store.matchMode).toBe("startsWith");
+        });
+
+        it("forces the configured mode back when the widget is locked in Studio Pro", () => {
+            const store = makeStore({ matchModeAdjustable: true });
+            store.setMatchMode("startsWith");
+
+            store.updateProps(spec({ matchMode: "equal", matchModeAdjustable: false }));
+
+            expect(store.matchMode).toBe("equal");
+        });
+
+        it("returns to the configured mode on reset", () => {
+            const store = makeStore({ matchMode: "contains", matchModeAdjustable: true });
+            store.setDefaultTerms("a");
+            store.setMatchMode("equal");
+
+            store.reset();
+
+            expect(store.matchMode).toBe("contains");
+        });
+    });
+
     describe("condition", () => {
         it("is undefined when there are no terms", () => {
             expect(makeStore().condition).toBeUndefined();
@@ -234,11 +285,53 @@ describe("MultiStringFilterStore", () => {
             store.setDefaultTerms(undefined);
             store.setTerms("a,b,c");
             const json = store.toJSON();
-            expect(json).toEqual(["a", "b", "c"]);
+            // The match mode rides as a sentinel first element; the terms follow it.
+            expect(json).toEqual(["@@matchMode:contains", "a", "b", "c"]);
 
             const restored = makeStore();
             restored.fromJSON(json);
             expect(restored.terms).toEqual(["a", "b", "c"]);
+        });
+
+        it("restores a user-chosen match mode when the filter is adjustable", () => {
+            const store = makeStore({ matchModeAdjustable: true });
+            store.setDefaultTerms(undefined);
+            store.setMatchMode("startsWith");
+            store.setTerms("a,b");
+
+            const restored = makeStore({ matchModeAdjustable: true });
+            restored.fromJSON(store.toJSON());
+
+            expect(restored.matchMode).toBe("startsWith");
+            expect(restored.terms).toEqual(["a", "b"]);
+        });
+
+        it("keeps a locked filter on its configured mode even if settings say otherwise", () => {
+            const store = makeStore({ matchModeAdjustable: true });
+            store.setDefaultTerms(undefined);
+            store.setMatchMode("startsWith");
+            store.setTerms("a");
+
+            const locked = makeStore({ matchMode: "equal", matchModeAdjustable: false });
+            locked.fromJSON(store.toJSON());
+
+            expect(locked.matchMode).toBe("equal");
+            expect(locked.terms).toEqual(["a"]);
+        });
+
+        it("still restores settings written before the mode was persisted", () => {
+            const store = makeStore({ matchModeAdjustable: true });
+            store.fromJSON(["a", "b"]);
+
+            expect(store.terms).toEqual(["a", "b"]);
+            expect(store.matchMode).toBe("contains");
+        });
+
+        it("treats a sentinel-looking first element with an unknown mode as a term", () => {
+            const store = makeStore({ matchModeAdjustable: true });
+            store.fromJSON(["@@matchMode:nonsense", "a"]);
+
+            expect(store.terms).toEqual(["@@matchMode:nonsense", "a"]);
         });
 
         it("ignores null and undefined settings", () => {

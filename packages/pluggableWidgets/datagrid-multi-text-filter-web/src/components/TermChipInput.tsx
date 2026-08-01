@@ -1,9 +1,23 @@
+import { FilterSelector } from "@mendix/widget-plugin-filtering/controls/filter-selector/FilterSelector";
 import { Cross, classes } from "@mendix/widget-plugin-dropdown-filter/controls/picker-primitives";
 import classNames from "classnames";
 import { ChangeEvent, ClipboardEvent, CSSProperties, FocusEvent, KeyboardEvent, ReactElement, RefObject } from "react";
+import { MatchModeEnum } from "../../typings/DatagridMultiTextFilterProps";
 import { TERM_DELIMITERS } from "../utils/normalize-terms";
+import "../ui/DatagridMultiTextFilter.scss";
 
 const cls = classes("widget-multi-text-filter");
+
+/**
+ * Captions match the XML enumeration so the dropdown reads the same as the Studio Pro
+ * property. The `value` doubles as the CSS class the theme uses to pick each glyph, which
+ * is why these keys must stay identical to `MatchModeEnum`.
+ */
+const MATCH_MODE_OPTIONS: Array<{ value: MatchModeEnum; label: string }> = [
+    { value: "contains", label: "Contains" },
+    { value: "equal", label: "Equal" },
+    { value: "startsWith", label: "Starts with" }
+];
 
 export interface TermChipInputProps {
     terms: string[];
@@ -15,6 +29,11 @@ export interface TermChipInputProps {
     placeholder?: string;
     ariaLabel?: string;
     removeTermCaption?: string;
+    /** Renders the match-mode selector button ahead of the input. */
+    adjustable?: boolean;
+    matchMode?: MatchModeEnum;
+    matchModeCaption?: string;
+    onMatchModeChange?: (mode: MatchModeEnum) => void;
     inputRef?: RefObject<HTMLInputElement | null>;
     onCommit: (text: string) => void;
     onRemove: (term: string) => void;
@@ -29,6 +48,10 @@ export function TermChipInput(props: TermChipInputProps): ReactElement {
         inputValue,
         ariaLabel = "Search terms",
         removeTermCaption = "Remove term",
+        adjustable = false,
+        matchMode = "contains",
+        matchModeCaption,
+        onMatchModeChange,
         onCommit,
         onRemove,
         onRemoveLast,
@@ -106,14 +129,25 @@ export function TermChipInput(props: TermChipInputProps): ReactElement {
 
     return (
         <div className={classNames(cls.root, props.className)} style={props.style} id={props.id}>
-            <div className={cls.inputContainer}>
-                {/*
-                 * `form-control` is Atlas's input class, the same one the built-in Text filter
-                 * uses (see InputWithFilters). Wearing it gives this input identical height,
-                 * border, radius and focus ring, and keeps it correct under custom themes.
-                 */}
+            {/*
+             * `filter-container`, `filter-selector` (via FilterSelector) and
+             * `form-control filter-input` are exactly what the built-in Text filter renders
+             * through InputWithFilters. Wearing the same classes means the input row's
+             * chrome — height, border, radius, focus ring, and the selector button's glyphs
+             * and seam — all come from the theme's existing `_datagrid-filters.scss` rather
+             * than being reimplemented here, so the two widgets cannot drift apart.
+             */}
+            <div className={classNames("filter-container", cls.inputContainer)} data-focusindex={props.tabIndex ?? 0}>
+                {adjustable && (
+                    <FilterSelector
+                        ariaLabel={matchModeCaption}
+                        value={matchMode}
+                        onSelect={value => onMatchModeChange?.(value as MatchModeEnum)}
+                        options={MATCH_MODE_OPTIONS}
+                    />
+                )}
                 <input
-                    className={classNames("form-control", cls.input)}
+                    className={classNames("form-control", cls.input, { "filter-input": adjustable })}
                     type="text"
                     ref={props.inputRef}
                     value={inputValue}

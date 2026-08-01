@@ -16,7 +16,12 @@ import {
 } from "@mendix/widget-plugin-platform/preview/structure-preview-api";
 import { DatagridMultiTextFilterPreviewProps, MatchModeEnum } from "../typings/DatagridMultiTextFilterProps";
 
-export function getProperties(_values: DatagridMultiTextFilterPreviewProps, defaultProperties: Properties): Properties {
+export function getProperties(values: DatagridMultiTextFilterPreviewProps, defaultProperties: Properties): Properties {
+    // The button caption is only reachable when the match-mode button is rendered.
+    if (!values.adjustable) {
+        hidePropertyIn(defaultProperties, values, "screenReaderButtonCaption");
+    }
+
     // linkedDs is populated by the platform from the parent grid, never by the
     // user, and it generates no prop at all in the preview typings — hence the
     // synthetic cast instead of referencing values.linkedDs.

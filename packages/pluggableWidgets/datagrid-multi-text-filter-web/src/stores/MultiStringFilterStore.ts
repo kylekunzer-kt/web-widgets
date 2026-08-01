@@ -32,6 +32,25 @@ export interface MultiStringFilterStoreSpec {
     attributes: Array<AttributeMetaData<string>>;
     matchMode: MatchModeEnum;
     maxTerms: number;
+    /** When true, the end user may change the match mode at runtime. */
+    matchModeAdjustable?: boolean;
+}
+
+const MATCH_MODES: MatchModeEnum[] = ["contains", "equal", "startsWith"];
+
+/**
+ * Prefix marking the persisted match mode in the settings array.
+ *
+ * `FilterData` only permits `string[]` for a select-style store, so there is no separate
+ * slot for the mode — it rides as a sentinel first element. A stored term would have to
+ * be the literal string `@@matchMode:contains` (or one of the other two modes) to be
+ * mistaken for it, which is why the suffix is validated against the known modes rather
+ * than accepted blindly.
+ */
+const MODE_PREFIX = "@@matchMode:";
+
+function isMatchMode(value: string): value is MatchModeEnum {
+    return (MATCH_MODES as string[]).includes(value);
 }
 
 /**
@@ -61,13 +80,23 @@ export class MultiStringFilterStore implements Filter {
     private _matchMode: MatchModeEnum;
     private _maxTerms: number;
     private _defaultTerms: string[] = [];
+    /** The design-time match mode, i.e. what `reset()` and a locked filter fall back to. */
+    private _defaultMatchMode: MatchModeEnum;
+    private _matchModeAdjustable: boolean;
+    /**
+     * True once the mode came from the user or from restored settings. Guards `updateProps`
+     * from overwriting a runtime choice every time the widget re-renders.
+     */
+    private _matchModeTouched = false;
 
     constructor(spec: MultiStringFilterStoreSpec, initCond: FilterCondition | null) {
         this._attributes = spec.attributes;
         this._matchMode = spec.matchMode;
+        this._defaultMatchMode = spec.matchMode;
+        this._matchModeAdjustable = spec.matchModeAdjustable ?? false;
         this._maxTerms = Math.max(1, Math.floor(spec.maxTerms));
 
-        makeObservable<this, "_attributes" | "_matchMode" | "_maxTerms">(this, {
+        makeObservable<this, "_attributes" | "_matchMode" | "_maxTerms" | "_matchModeAdjustable">(this, {
             terms: observable.struct,
             liveTerm: observable,
             droppedCount: observable,
@@ -75,6 +104,9 @@ export class MultiStringFilterStore implements Filter {
             _attributes: observable.ref,
             _matchMode: observable,
             _maxTerms: observable,
+            _matchModeAdjustable: observable,
+            matchMode: computed,
+            setMatchMode: action,
             activeTerms: computed,
             liveTermSuppressed: computed,
             condition: computed,
@@ -98,6 +130,23 @@ export class MultiStringFilterStore implements Filter {
         if (initCond) {
             this.fromViewState(initCond);
         }
+    }
+
+    /** The match mode currently applied to every term. */
+    get matchMode(): MatchModeEnum {
+        return this._matchMode;
+    }
+
+    /**
+     * Change the match mode at runtime. Ignored when the widget is configured as not
+     * adjustable, so a stale persisted setting or a rogue caller cannot unlock it.
+     */
+    setMatchMode(mode: MatchModeEnum): void {
+        if (!this._matchModeAdjustable || mode === this._matchMode) {
+            return;
+        }
+        this._matchMode = mode;
+        this._matchModeTouched = true;
     }
 
     /** Committed terms plus the live term, when the live term is usable. */
@@ -189,6 +238,9 @@ export class MultiStringFilterStore implements Filter {
     reset(): void {
         this.setTerms(this._defaultTerms);
         this.liveTerm = "";
+        // A reset returns the whole filter to its design-time state, match mode included.
+        this._matchMode = this._defaultMatchMode;
+        this._matchModeTouched = false;
     }
 
     /**
@@ -217,12 +269,24 @@ export class MultiStringFilterStore implements Filter {
         if (!comparer.shallow(this._attributes, spec.attributes)) {
             this._attributes = spec.attributes;
         }
-        this._matchMode = spec.matchMode;
         this._maxTerms = Math.max(1, Math.floor(spec.maxTerms));
+        this._defaultMatchMode = spec.matchMode;
+        this._matchModeAdjustable = spec.matchModeAdjustable ?? false;
+
+        // Only follow the design-time mode while nothing has overridden it. Otherwise every
+        // re-render would undo the end user's choice — and locking the widget in Studio Pro
+        // must still force the configured mode back, which is why the lock case reasserts it.
+        if (!this._matchModeAdjustable || !this._matchModeTouched) {
+            this._matchMode = spec.matchMode;
+        }
     }
 
     toJSON(): FilterData {
-        return this.isInitialized ? [...this.terms] : undefined;
+        if (!this.isInitialized) {
+            return undefined;
+        }
+        // The mode rides as a sentinel first element — see MODE_PREFIX.
+        return [MODE_PREFIX + this._matchMode, ...this.terms];
     }
 
     fromJSON(data: FilterData): void {
@@ -234,7 +298,26 @@ export class MultiStringFilterStore implements Filter {
             return;
         }
 
-        this.setTerms(data);
+        let terms = data;
+
+        // Peel off the persisted match mode if it is present and names a mode we know.
+        // Settings written before the mode was persisted simply have no sentinel, so they
+        // still restore correctly as a plain term list.
+        const [first, ...rest] = data;
+        if (typeof first === "string" && first.startsWith(MODE_PREFIX)) {
+            const mode = first.slice(MODE_PREFIX.length);
+            if (isMatchMode(mode)) {
+                terms = rest;
+                // Bypass setMatchMode's adjustable guard for the restore itself, but keep a
+                // locked widget pinned to its configured mode.
+                if (this._matchModeAdjustable) {
+                    this._matchMode = mode;
+                    this._matchModeTouched = true;
+                }
+            }
+        }
+
+        this.setTerms(terms);
         this.isInitialized = true;
     }
 

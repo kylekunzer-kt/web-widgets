@@ -22,6 +22,12 @@ export function preview(props: DatagridMultiTextFilterPreviewProps): ReactElemen
             placeholder={props.placeholder}
             ariaLabel={props.screenReaderInputCaption}
             removeTermCaption={props.removeTermCaption}
+            adjustable={props.adjustable}
+            matchMode={props.matchMode}
+            matchModeCaption={props.screenReaderButtonCaption}
+            onMatchModeChange={() => {
+                //
+            }}
             onCommit={() => {
                 //
             }}

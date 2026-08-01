@@ -9,3 +9,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 
 - We added the Multi text filter widget. It filters Data Grid 2 rows by several search terms at once. Terms can be typed one by one or pasted as a comma-separated list, and a row matches when any term matches any of the selected attributes.
+- The Multi text filter shows a match mode button, so the end user can switch between Contains, Equal and Starts with while filtering. You can turn the button off with "Adjustable by user" to keep the mode fixed.

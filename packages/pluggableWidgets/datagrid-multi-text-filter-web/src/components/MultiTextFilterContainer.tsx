@@ -32,9 +32,10 @@ export const MultiTextFilterContainer: (props: ContainerProps) => ReactElement =
             props.filterStore.updateProps({
                 attributes: props.attributes.map(obj => obj.attribute),
                 matchMode: props.matchMode,
-                maxTerms: props.maxTerms
+                maxTerms: props.maxTerms,
+                matchModeAdjustable: props.adjustable
             });
-        }, [props.filterStore, props.attributes, props.matchMode, props.maxTerms]);
+        }, [props.filterStore, props.attributes, props.matchMode, props.maxTerms, props.adjustable]);
 
         useTermsSync(props, props.filterStore);
 
@@ -63,6 +64,10 @@ export const MultiTextFilterContainer: (props: ContainerProps) => ReactElement =
                     placeholder={props.placeholder?.value}
                     ariaLabel={props.screenReaderInputCaption?.value}
                     removeTermCaption={props.removeTermCaption?.value}
+                    adjustable={props.adjustable}
+                    matchMode={controller.matchMode}
+                    matchModeCaption={props.screenReaderButtonCaption?.value}
+                    onMatchModeChange={controller.handleMatchModeChange}
                     inputRef={controller.inputRef}
                     onCommit={controller.handleCommit}
                     onRemove={controller.handleRemove}

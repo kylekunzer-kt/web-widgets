@@ -42,6 +42,7 @@ function commonProps(
         tabIndex: 0,
         attributes: [{ attribute: attr("a") }],
         matchMode: "contains",
+        adjustable: false,
         maxTerms: 100,
         delay: 500,
         ...overrides
@@ -243,5 +244,53 @@ describe("DatagridMultiTextFilter", () => {
         const { container } = render(<DatagridMultiTextFilter {...commonProps({ defaultValue: dynamic.loading() })} />);
         expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
         expect(container).toBeEmptyDOMElement();
+    });
+
+    describe("match mode button", () => {
+        it("is absent when the filter is not adjustable", () => {
+            const { container } = render(<DatagridMultiTextFilter {...commonProps({ adjustable: false })} />);
+            expect(container.querySelector(".filter-selector")).not.toBeInTheDocument();
+        });
+
+        it("renders inside the shared filter-container chrome when adjustable", () => {
+            const { container } = render(<DatagridMultiTextFilter {...commonProps({ adjustable: true })} />);
+
+            // These are the built-in Text filter's own classes — matching them is what makes
+            // the two widgets look identical without duplicating any styling.
+            expect(container.querySelector(".filter-container")).toBeInTheDocument();
+            expect(container.querySelector(".filter-selector")).toBeInTheDocument();
+            expect(screen.getByRole("textbox")).toHaveClass("form-control", "filter-input");
+        });
+
+        it("shows the configured mode as the button's state class", () => {
+            const { container } = render(
+                <DatagridMultiTextFilter {...commonProps({ adjustable: true, matchMode: "startsWith" })} />
+            );
+            expect(container.querySelector(".filter-selector-button")).toHaveClass("startsWith");
+        });
+
+        it("switches the condition operator when the user picks another mode", async () => {
+            const user = userEvent.setup();
+            render(
+                <DatagridMultiTextFilter
+                    {...commonProps({
+                        adjustable: true,
+                        screenReaderButtonCaption: dynamic.available("Match mode")
+                    })}
+                />
+            );
+
+            await user.click(screen.getByRole("textbox"));
+            await user.paste("abc,");
+            expect(filterHost.condWithMeta.cond!.name).toBe("contains");
+
+            // The shared FilterSelector's trigger is a downshift combobox, and its accessible
+            // name is the selected option's caption (see useSelect) — so it announces the mode
+            // currently in effect rather than a static label.
+            await user.click(screen.getByRole("combobox", { name: "Contains" }));
+            await user.click(screen.getByRole("option", { name: "Equal" }));
+
+            expect(filterHost.condWithMeta.cond!.name).toBe("=");
+        });
     });
 });
